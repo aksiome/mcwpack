@@ -1,0 +1,30 @@
+[package]
+name = "mcwpack"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.68"
+clap = { version = "4.1.1", features = ["derive"] }
+console = "0.15.4"
+dialoguer = "0.10.2"
+enum_dispatch = "0.3.11"
+env_logger = "0.10.0"
+fastanvil = "0.26.0"
+fastnbt = "2.3.2"
+flate2 = "1.0.25"
+fs_extra = "1.2.0"
+ignore = "0.4.19"
+indicatif = { version = "0.17.2", features = ["rayon"] }
+log = "0.4.17"
+rayon = "1.6.1"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_yaml = "0.9.16"
+tempfile = "3.3.0"
+zip-extensions = "0.6.1"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "s"
+codegen-units = 1
