@@ -1,4 +1,5 @@
-use std::{path::Path, fs};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use dialoguer::Editor;
 use ignore::overrides::{Override, OverrideBuilder};
@@ -26,6 +27,8 @@ packaged_entries:
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub name: Option<String>,
+    #[serde(deserialize_with="deserialize_path")]
+    pub resourcepack: Option<PathBuf>,
     #[serde(default)]
     pub clean_chunks: bool,
     #[serde(default)]
@@ -34,6 +37,16 @@ pub struct Config {
     pub zip_datapacks: bool,
     #[serde(rename="packaged_entries", deserialize_with="deserialize_override")]
     pub overrides: Override,
+}
+
+fn deserialize_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let path: Option<PathBuf> = Deserialize::deserialize(deserializer)?;
+    path.and_then(
+        |path| Some(path.canonicalize().map_err(serde::de::Error::custom))
+    ).transpose()
 }
 
 fn deserialize_override<'de, D>(deserializer: D) -> Result<Override, D::Error>
@@ -50,6 +63,7 @@ where
 
 impl Config {
     pub fn load(path: &Path) -> Option<Self> {
+        std::env::set_current_dir(path.parent().unwrap()).expect("could not set working dir");
         fs::read_to_string(path).map_or_else(|_| {
             log::error!("could not read the config file!");
             Self::create_or_edit(path, DEFAULT_CONTENTS)

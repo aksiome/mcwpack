@@ -9,6 +9,7 @@ use tempfile::TempDir;
 use rayon::prelude::*;
 
 use crate::config::Config;
+use crate::entries::rp::ResourcePackEntry;
 use crate::entries::{WorldEntry, Entry};
 use crate::utils;
 
@@ -60,7 +61,10 @@ impl App {
     }
 
     fn create_world_entries(&self) -> Vec<WorldEntry> {
-        let entries = Mutex::new(Vec::new());
+        let entries = Mutex::new(self.config.resourcepack.as_ref().map_or_else(
+            || vec![],
+            |path| vec![WorldEntry::ResourcePack(ResourcePackEntry::new(path))],
+        ));
         let walker = WalkBuilder::new("./")
             .overrides(self.config.overrides.to_owned())
             .same_file_system(true)
