@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use dialoguer::Editor;
 use ignore::overrides::{Override, OverrideBuilder};
 use serde::{Deserialize, Deserializer};
 
@@ -78,9 +77,9 @@ impl Config {
         if !utils::confirm("Do you want to edit the config file?") {
             return None;
         }
-        Editor::new().edit(contents).ok().flatten().and_then(|contents| {
+        edit::edit(contents).ok().and_then(|contents| {
             Self::try_parse(&contents).and_then(|config| {
-                if utils::confirm("Do you want to save the config?") {
+                if utils::confirm("Do you want to save the config file?") {
                     fs::write(path, &contents).unwrap_or_else(|err| {
                         log::error!("{err}");
                     });
