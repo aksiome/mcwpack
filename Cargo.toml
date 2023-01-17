@@ -7,7 +7,6 @@ edition = "2021"
 anyhow = "1.0.68"
 clap = { version = "4.1.1", features = ["derive"] }
 console = "0.15.4"
-dialoguer = "0.10.2"
 edit = "0.1.4"
 enum_dispatch = "0.3.11"
 env_logger = "0.10.0"
@@ -17,6 +16,7 @@ flate2 = "1.0.25"
 fs_extra = "1.2.0"
 ignore = "0.4.19"
 indicatif = { version = "0.17.2", features = ["rayon"] }
+inquire = { version = "0.5.3", default-features = false, features = ["console"] }
 log = "0.4.17"
 rayon = "1.6.1"
 serde = { version = "1.0.152", features = ["derive"] }
