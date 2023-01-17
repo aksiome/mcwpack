@@ -1,22 +1,46 @@
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::Result;
-use dialoguer::Confirm;
+use env_logger::Builder;
+use env_logger::fmt::Color;
 use fs_extra::dir;
-use zip_extensions::zip_create_from_directory;
+use inquire::validator::{Validation, StringValidator};
+use inquire::{Confirm, CustomUserError, Text};
+use log::{Level, LevelFilter};
 
-pub fn confirm(message: &str) -> bool {
-    Confirm::new()
-        .with_prompt(message)
-        .interact()
-        .unwrap_or(false)
+#[derive(Clone)]
+struct PathValidator {
+    exists: bool,
 }
 
-pub fn with_extension(path: &Path, ext: &str) -> PathBuf {
-    let mut path = path.to_owned();
-    path.set_extension(ext);
-    path
+impl PathValidator {
+    fn new(exists: bool) -> Self {
+        Self { exists }
+    }
+}
+
+impl StringValidator for PathValidator {
+    fn validate(&self, input: &str) -> Result<Validation, CustomUserError> {
+        Ok(match PathBuf::from_str(input) {
+            Err(_) => Validation::Invalid("A valid path is required".into()),
+            Ok(_) if input.is_empty() => Validation::Invalid("A non empty path is required".into()),
+            Ok(path) if self.exists && !path.exists() =>  Validation::Invalid("An existing path is required".into()),
+            _ => Validation::Valid
+        })
+    }
+}
+
+pub fn confirm(message: &str) -> bool {
+    Confirm::new(message).with_default(true).prompt().unwrap_or(false)
+}
+
+pub fn enter_path(message: &str, exists: bool) -> PathBuf {
+    Text::new(message).with_validator(PathValidator::new(exists)).prompt().map(
+        |value| PathBuf::from_str(&value).ok()
+    ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
 }
 
 pub fn copy_dir(from: &Path, to: &Path) -> Result<()> {
@@ -27,8 +51,7 @@ pub fn copy_dir(from: &Path, to: &Path) -> Result<()> {
 }
 
 pub fn create_zip(from: &Path, to: &Path) -> Result<()> {
-    let to = with_extension(to, "zip");
-    zip_create_from_directory(&to, &from.to_owned())?;
+    zip_extensions::zip_create_from_directory(&to.with_extension("zip"), &from.to_owned())?;
     Ok(())
 }
 
@@ -49,4 +72,23 @@ pub fn print_done(to: &Path, time: Duration) {
         to.canonicalize().unwrap().to_string_lossy(),
         time.as_secs_f32(),
     );
+}
+
+pub fn init_logger(level: LevelFilter) {
+    Builder::new().filter(Some("mcwpack"), level).format(|buf, record| {
+        let mut style = buf.style();
+        style.set_bold(true);
+        writeln!(
+            buf,
+            "{}: {}",
+            match record.level() {
+                Level::Trace => style.set_color(Color::Black).value(" ❱"),
+                Level::Debug => style.set_color(Color::Magenta).value("debug"),
+                Level::Info => style.set_color(Color::Cyan).value("info"),
+                Level::Warn => style.set_color(Color::Yellow).value("warn"),
+                Level::Error => style.set_color(Color::Red).value("error"),
+            },
+            record.args(),
+        )
+    }).init();
 }

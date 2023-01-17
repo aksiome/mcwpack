@@ -1,13 +1,10 @@
 use std::env;
-use std::io::Write;
 use std::path::PathBuf;
 
 use app::App;
 use clap::Parser;
 use config::Config;
-use env_logger::Builder;
-use env_logger::fmt::Color;
-use log::{Level, LevelFilter};
+use log::LevelFilter;
 
 mod app;
 mod config;
@@ -19,7 +16,7 @@ mod utils;
 #[clap(name = "Minecraft World Packager", version = "0.1", author = "Aksiome")]
 pub struct Opts {
     #[clap(value_name = "WORLD_PATH")]
-    world: PathBuf,
+    world: Option<PathBuf>,
     /// Set the output zip
     #[arg(short, value_name = "ZIP_PATH", conflicts_with = "dir")]
     zip: Option<PathBuf>,
@@ -39,41 +36,22 @@ pub struct Opts {
 
 fn main() {
     let opts = Opts::parse();
-    init_logger(match (opts.verbose, opts.quiet) {
-        (true, false) => LevelFilter::Trace,
-        (false, true) => LevelFilter::Error,
-        _ => LevelFilter::Warn,
-    });
-    let root = env::current_dir().unwrap();
-    let config = opts.config.unwrap_or_else(
-        || opts.world.join(config::DEFAULT_FILENAME)
+    utils::init_logger(
+        opts.verbose.then(|| LevelFilter::Trace)
+        .or(opts.quiet.then(|| LevelFilter::Error))
+        .unwrap_or_else(|| LevelFilter::Warn)
     );
 
+    let root = env::current_dir().unwrap();
+    let world = root.join(opts.world.unwrap_or_else(|| utils::enter_path("Please enter the world path: ", true)));
+    let config = root.join(opts.config.unwrap_or_else(|| world.join(config::DEFAULT_FILENAME)));
+
     if let Some(config) = Config::load(&config) {
-        let app = App::new(opts.world, config);
+        let app = App::new(world, config);
         match (opts.dir, opts.zip) {
             (Some(to), _) => app.package_dir(&root.join(to)),
             (_, Some(to)) => app.package_zip(&root.join(to)),
-            _ => todo!(),
+            _ => app.package_zip(&root.join(utils::enter_path("Please enter the zip output path: ", false))),
         }
     }
-}
-
-fn init_logger(level: LevelFilter) {
-    Builder::new().filter(Some("mcwpack"), level).format(|buf, record| {
-        let mut style = buf.style();
-        style.set_bold(true);
-        writeln!(
-            buf,
-            "{} {}",
-            match record.level() {
-                Level::Trace => style.set_color(Color::Black).value(" ❱"),
-                Level::Debug => style.set_color(Color::Magenta).value("[debug]"),
-                Level::Info => style.set_color(Color::Cyan).value("[info]"),
-                Level::Warn => style.set_color(Color::Yellow).value("[warning]"),
-                Level::Error => style.set_color(Color::Red).value("[error]"),
-            },
-            record.args(),
-        )
-    }).init();
 }

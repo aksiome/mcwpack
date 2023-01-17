@@ -34,11 +34,10 @@ impl App {
 
     pub fn package_zip(&self, to: &Path) {
         utils::print_start(&self.world);
-        let zip = utils::with_extension(to, "zip");
         let temp = TempDir::new().unwrap();
         self.write_packaged_world(temp.path());
-        utils::create_zip(temp.path(), &zip).unwrap_or_else(|err| log::error!("{err}"));
-        utils::print_done(&zip, self.created.elapsed());
+        utils::create_zip(temp.path(), &to).unwrap_or_else(|err| log::error!("{err}"));
+        utils::print_done(&to.with_extension("zip"), self.created.elapsed());
     }
 
     fn write_packaged_world(&self, to: &Path) {
@@ -46,7 +45,7 @@ impl App {
 
         let entries = self.create_world_entries();
         let progress = ProgressBar::new(entries.len() as u64)
-            .with_style(ProgressStyle::with_template(PROGRESS).unwrap().progress_chars("▰═"))
+            .with_style(ProgressStyle::with_template(PROGRESS).unwrap().progress_chars("=>-"))
             .with_prefix("Progress");
 
         entries.par_iter().progress_with(progress.to_owned()).for_each(|entry| {
