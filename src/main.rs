@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use app::App;
+use app::{App, Output};
 use clap::Parser;
 use config::Config;
 use log::LevelFilter;
@@ -49,9 +49,9 @@ fn main() {
     if let Some(config) = Config::load(&config) {
         let app = App::new(world, config);
         match (opts.dir, opts.zip) {
-            (Some(to), _) => app.package_dir(&root.join(to)),
-            (_, Some(to)) => app.package_zip(&root.join(to)),
-            _ => app.package_zip(&root.join(utils::enter_path("Please enter the zip output path: ", false))),
+            (Some(to), _) => app.package(Output::Dir(root.join(to))),
+            (_, Some(to)) => app.package(Output::Zip(root.join(to))),
+            _ => app.package(Output::Zip(root.join(utils::enter_path("Please enter the zip output path: ", false)))),
         }
     }
 }
