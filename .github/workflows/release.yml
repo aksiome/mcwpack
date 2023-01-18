@@ -13,13 +13,13 @@ jobs:
       matrix:
         include:
           - target: x86_64-pc-windows-gnu
-            output: mcwpack-windows.zip
+            output: mcwpack-windows
             archive: zip
           - target: x86_64-unknown-linux-musl
-            output: mcwpack-linux.tar.gz
+            output: mcwpack-linux
             archive: tar.gz
           - target: x86_64-apple-darwin
-            output: mcwpack-macos.zip
+            output: mcwpack-macos
             archive: zip
     steps:
       - uses: actions/checkout@master
