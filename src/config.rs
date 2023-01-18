@@ -7,12 +7,19 @@ use serde::{Deserialize, Deserializer};
 use crate::utils;
 
 pub const DEFAULT_FILENAME: &str = "mcwpack.yaml";
-pub const DEFAULT_CONTENTS: &str = "# MCWPACK CONFIG FILE
+pub const DEFAULT_CONTENTS: &str = "#### MCWPACK CONFIG FILE ####
+
+# Level name (supports minecraft color codes)
 name: null
+# Resourcepack directory (or zip archive)
 resourcepack: null
+# Remove empty chunks from the world
 clean_chunks: true
+# Reset player data in level.dat
 reset_player: true
+# Archive all non-archived datapacks
 zip_datapacks: true
+# Filter accepted entries (using glob patterns)
 packaged_entries:
   - \"data/*.dat\"
   - \"datapacks/*\"
