@@ -6,6 +6,7 @@ use anyhow::{Result, Context};
 use crate::config::Config;
 use crate::entries::Entry;
 use crate::models::region::Region;
+use crate::utils;
 
 pub struct RegionEntry {
     path: PathBuf,
@@ -21,14 +22,19 @@ impl RegionEntry {
 
 impl Entry for RegionEntry {
     fn package(&self, config: &Config, to: &Path) -> Result<()> {
+        log::info!("processing region ({})", self.path.to_string_lossy());
         let to = to.to_owned().join(&self.path);
-        fs::create_dir_all(&to.parent().unwrap())?;
-        Ok(match config.clean_chunks {
+        fs::create_dir_all(to.parent().unwrap())?;
+        if self.path.metadata()?.len() <= 8192 {
+            log::info!("skipped empty region ({})", self.path.to_string_lossy());
+            return Ok(());
+        }
+        match config.clean_chunks {
             true => Region::load(&self.path)
-                .with_context(|| format!("could not read region ({})", &self.path.to_string_lossy()))?
+                .with_context(|| format!("could not read region ({})", self.path.to_string_lossy()))?
                 .write_cleaned(&to)
-                .with_context(|| format!("could not process region ({})", &self.path.to_string_lossy()))?,
-            false => fs::copy(&self.path, &to).map(|_| ())?
-        })
+                .with_context(|| format!("could not process region ({})", self.path.to_string_lossy())),
+            false => utils::copy_file(&self.path, &to)
+        }
     }
 }

@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -41,6 +42,11 @@ pub fn enter_path(message: &str, exists: bool) -> PathBuf {
     Text::new(message).with_validator(PathValidator::new(exists)).prompt().map(
         |value| PathBuf::from_str(&value).ok()
     ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
+}
+
+pub fn copy_file(from: &Path, to: &Path) -> Result<()> {
+    fs::copy(from, to)?;
+    Ok(())
 }
 
 pub fn copy_dir(from: &Path, to: &Path) -> Result<()> {

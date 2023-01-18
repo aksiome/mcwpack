@@ -18,26 +18,27 @@ const PROGRESS: &str = "   {prefix:.cyan.bold} {bar:35} {pos}/{len} files";
 pub struct App {
     world: PathBuf,
     config: Config,
-    created: Instant,
 }
 
 impl App {
     pub fn new(world: PathBuf, config: Config) -> Self {
-        Self { world, config, created: Instant::now() }
+        Self { world, config }
     }
 
     pub fn package_dir(&self, to: &Path) {
+        let time = Instant::now();
         utils::print_start(&self.world);
         self.write_packaged_world(to);
-        utils::print_done(to, self.created.elapsed());
+        utils::print_done(to, time.elapsed());
     }
 
     pub fn package_zip(&self, to: &Path) {
+        let time = Instant::now();
         utils::print_start(&self.world);
         let temp = TempDir::new().unwrap();
         self.write_packaged_world(temp.path());
         utils::create_zip(temp.path(), &to).unwrap_or_else(|err| log::error!("{err}"));
-        utils::print_done(&to.with_extension("zip"), self.created.elapsed());
+        utils::print_done(&to.with_extension("zip"), time.elapsed());
     }
 
     fn write_packaged_world(&self, to: &Path) {

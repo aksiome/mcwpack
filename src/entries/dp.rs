@@ -21,12 +21,13 @@ impl DataPackEntry {
 
 impl Entry for DataPackEntry {
     fn package(&self, config: &Config, to: &Path) -> Result<()> {
+        log::info!("processing datapack ({})", self.path.to_string_lossy());
         let to = to.to_owned().join(&self.path);
-        fs::create_dir_all(&to.parent().unwrap())?;
-        Ok(match (self.path.is_file(), config.zip_datapacks) {
-            (true, _) => fs::copy(&self.path, &to).map(|_| ())?,
-            (false, false) => utils::copy_dir(&self.path, &to)?,
-            (false, true) => utils::create_zip(&self.path, &to)?,
-        })
+        fs::create_dir_all(to.parent().unwrap())?;
+        match (self.path.is_file(), config.zip_datapacks) {
+            (true, _) => utils::copy_file(&self.path, &to),
+            (false, false) => utils::copy_dir(&self.path, &to),
+            (false, true) => utils::create_zip(&self.path, &to),
+        }
     }
 }
