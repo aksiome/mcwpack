@@ -4,17 +4,19 @@ use std::path::{PathBuf, Path};
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::entries::Entry;
 use crate::utils;
+
+use super::Entry;
+use super::WorldEntry;
 
 pub struct FileEntry {
     path: PathBuf,
 }
 
 impl FileEntry {
-    pub fn new(path: &Path) -> Option<Self> {
+    pub fn try_create(path: &Path) -> Option<WorldEntry> {
         path.is_file().then(
-            || Self { path: path.to_owned() }
+            || WorldEntry::File(Self { path: path.to_owned() })
         )
     }
 }

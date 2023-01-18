@@ -4,17 +4,19 @@ use std::path::{PathBuf, Path};
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::entries::Entry;
 use crate::models::level::Level;
+
+use super::Entry;
+use super::WorldEntry;
 
 pub struct LevelEntry {
     path: PathBuf,
 }
 
 impl LevelEntry {
-    pub fn new(path: &Path) -> Option<Self> {
+    pub fn try_create(path: &Path) -> Option<WorldEntry> {
         (path.is_file() && path.file_name().map_or(false, |name| name == "level.dat")).then(
-            || Self { path: path.to_owned() }
+            || WorldEntry::Level(Self { path: path.to_owned() })
         )
     }
 }
@@ -25,7 +27,7 @@ impl Entry for LevelEntry {
         let to = to.to_owned().join(&self.path);
         fs::create_dir_all(to.parent().unwrap())?;
         let mut level = Level::load(&self.path)?;
-        config.name.as_ref().map(|name| level.set_name(&name));
+        if let Some(name) = &config.name { level.set_name(name) }
         config.reset_player.then(|| level.reset_player());
         config.zip_datapacks.then(|| level.update_all_datapacks(|value: &mut String| {
             if value.starts_with("file/") && !value.ends_with(".zip") {

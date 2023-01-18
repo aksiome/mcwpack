@@ -4,18 +4,20 @@ use std::path::{PathBuf, Path};
 use anyhow::{Result, Context};
 
 use crate::config::Config;
-use crate::entries::Entry;
 use crate::models::region::Region;
 use crate::utils;
+
+use super::Entry;
+use super::WorldEntry;
 
 pub struct RegionEntry {
     path: PathBuf,
 }
 
 impl RegionEntry {
-    pub fn new(path: &Path) -> Option<Self> {
+    pub fn try_create(path: &Path) -> Option<WorldEntry> {
         (path.is_file() && path.extension().map_or(false, |ext| ext == "mca")).then(
-            || Self { path: path.to_owned() }
+            || WorldEntry::Region(Self { path: path.to_owned() })
         )
     }
 }

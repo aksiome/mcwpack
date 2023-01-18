@@ -4,16 +4,18 @@ use std::path::{PathBuf, Path};
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::entries::Entry;
 use crate::utils;
+
+use super::Entry;
+use super::WorldEntry;
 
 pub struct ResourcePackEntry {
     path: PathBuf,
 }
 
 impl ResourcePackEntry {
-    pub fn new(path: &Path) -> Self {
-        Self { path: path.to_owned() }
+    pub fn create(path: &Path) -> WorldEntry {
+        WorldEntry::ResourcePack(Self { path: path.to_owned() })
     }
 }
 

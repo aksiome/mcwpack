@@ -37,9 +37,9 @@ pub struct Opts {
 fn main() {
     let opts = Opts::parse();
     utils::init_logger(
-        opts.verbose.then(|| LevelFilter::Trace)
-        .or(opts.quiet.then(|| LevelFilter::Error))
-        .unwrap_or_else(|| LevelFilter::Warn)
+        opts.verbose.then_some(LevelFilter::Trace)
+        .or_else(|| opts.quiet.then_some(LevelFilter::Error))
+        .unwrap_or(LevelFilter::Warn)
     );
 
     let root = env::current_dir().unwrap();

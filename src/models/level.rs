@@ -67,14 +67,14 @@ impl Level {
     }
 
     pub fn update_disabled_datapacks(&mut self, callback: Edit) {
-        for mut datapack in self.data.datapacks.disabled.iter_mut() {
-            callback(&mut datapack);
+        for datapack in self.data.datapacks.disabled.iter_mut() {
+            callback(datapack);
         }
     }
 
     pub fn update_enabled_datapacks(&mut self, callback: Edit) {
-        for mut datapack in self.data.datapacks.enabled.iter_mut() {
-            callback(&mut datapack);
+        for datapack in self.data.datapacks.enabled.iter_mut() {
+            callback(datapack);
         }
     }
 }

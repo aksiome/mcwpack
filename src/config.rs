@@ -43,9 +43,7 @@ where
     D: Deserializer<'de>,
 {
     let path: Option<PathBuf> = Deserialize::deserialize(deserializer)?;
-    path.and_then(
-        |path| Some(path.canonicalize().map_err(serde::de::Error::custom))
-    ).transpose()
+    path.map(|path| path.canonicalize().map_err(serde::de::Error::custom)).transpose()
 }
 
 fn deserialize_override<'de, D>(deserializer: D) -> Result<Override, D::Error>
@@ -70,7 +68,7 @@ impl Config {
     }
 
     fn try_parse(contents: &str) -> Option<Self> {
-        serde_yaml::from_str(&contents).map_err(|err| log::error!("{err}")).ok()
+        serde_yaml::from_str(contents).map_err(|err| log::error!("{err}")).ok()
     }
 
     fn create_or_edit(path: &Path, contents: &str) -> Option<Self> {
@@ -78,13 +76,13 @@ impl Config {
             return None;
         }
         edit::edit(contents).ok().and_then(|contents| {
-            Self::try_parse(&contents).and_then(|config| {
+            Self::try_parse(&contents).map(|config| {
                 if utils::confirm("Do you want to save the config file?") {
                     fs::write(path, &contents).unwrap_or_else(|err| {
                         log::error!("{err}");
                     });
                 }
-                Some(config)
+                config
             }).or_else(|| Self::create_or_edit(path, &contents))
         })
     }

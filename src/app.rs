@@ -9,6 +9,10 @@ use tempfile::TempDir;
 use rayon::prelude::*;
 
 use crate::config::Config;
+use crate::entries::dp::DataPackEntry;
+use crate::entries::file::FileEntry;
+use crate::entries::level::LevelEntry;
+use crate::entries::region::RegionEntry;
 use crate::entries::rp::ResourcePackEntry;
 use crate::entries::{WorldEntry, Entry};
 use crate::utils;
@@ -72,7 +76,7 @@ impl App {
     fn extra_entries(&self) -> Vec<WorldEntry> {
         let mut entries = Vec::new();
         if let Some(path) = &self.config.resourcepack {
-            entries.push(WorldEntry::ResourcePack(ResourcePackEntry::new(&path)))
+            entries.push(ResourcePackEntry::create(path))
         }
         entries
     }
@@ -85,7 +89,12 @@ impl App {
             .build_parallel();
 
         walker.run(|| Box::new(|entry| {
-            if let Some(entry) = entry.ok().and_then(|entry| WorldEntry::guess(entry.path())) {
+            let entry = entry.ok().map(|entry| DataPackEntry::try_create(entry.path())
+                .or_else(|| RegionEntry::try_create(entry.path()))
+                .or_else(|| LevelEntry::try_create(entry.path()))
+                .or_else(|| FileEntry::try_create(entry.path()))
+            );
+            if let Some(entry) = entry.flatten() {
                 entries.lock().unwrap().push(entry);
                 return Skip;
             }

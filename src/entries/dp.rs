@@ -4,17 +4,19 @@ use std::path::{PathBuf, Path};
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::entries::Entry;
 use crate::utils;
+
+use super::Entry;
+use super::WorldEntry;
 
 pub struct DataPackEntry {
     path: PathBuf,
 }
 
 impl DataPackEntry {
-    pub fn new(path: &Path) -> Option<Self> {
+    pub fn try_create(path: &Path) -> Option<WorldEntry> {
         path.parent().map_or(false, |dir| dir.ends_with("datapacks")).then(
-            || Self { path: path.to_owned() }
+            || WorldEntry::DataPack(Self { path: path.to_owned() })
         )
     }
 }

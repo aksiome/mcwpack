@@ -30,19 +30,3 @@ pub enum WorldEntry {
     Level(LevelEntry),
     File(FileEntry),
 }
-
-impl WorldEntry {
-    pub fn guess(path: &Path) -> Option<Self> {
-        if let Some(entry) = DataPackEntry::new(path) {
-            Some(WorldEntry::from(entry))
-        } else if let Some(entry) = RegionEntry::new(path) {
-            Some(WorldEntry::from(entry))
-        } else if let Some(entry) = LevelEntry::new(path) {
-            Some(WorldEntry::from(entry))
-        } else if let Some(entry) = FileEntry::new(path) {
-            Some(WorldEntry::from(entry))
-        } else {
-            None
-        }
-    }
-}
