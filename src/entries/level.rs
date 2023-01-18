@@ -21,8 +21,9 @@ impl LevelEntry {
 
 impl Entry for LevelEntry {
     fn package(&self, config: &Config, to: &Path) -> Result<()> {
+        log::info!("processing level ({})", self.path.to_string_lossy());
         let to = to.to_owned().join(&self.path);
-        fs::create_dir_all(&to.parent().unwrap())?;
+        fs::create_dir_all(to.parent().unwrap())?;
         let mut level = Level::load(&self.path)?;
         config.name.as_ref().map(|name| level.set_name(&name));
         config.reset_player.then(|| level.reset_player());

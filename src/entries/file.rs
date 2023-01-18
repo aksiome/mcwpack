@@ -5,6 +5,7 @@ use anyhow::Result;
 
 use crate::config::Config;
 use crate::entries::Entry;
+use crate::utils;
 
 pub struct FileEntry {
     path: PathBuf,
@@ -20,9 +21,9 @@ impl FileEntry {
 
 impl Entry for FileEntry {
     fn package(&self, _: &Config, to: &Path) -> Result<()> {
+        log::info!("processing file ({})", self.path.to_string_lossy());
         let to = to.to_owned().join(&self.path);
-        fs::create_dir_all(&to.parent().unwrap())?;
-        fs::copy(&self.path, &to)?;
-        Ok(())
+        fs::create_dir_all(to.parent().unwrap())?;
+        utils::copy_file(&self.path, &to)
     }
 }
