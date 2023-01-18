@@ -13,10 +13,13 @@ jobs:
       matrix:
         include:
           - target: x86_64-pc-windows-gnu
+            output: mcwpack-windows.zip
             archive: zip
           - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
+            output: mcwpack-linux.tar.gz
+            archive: tar.gz
           - target: x86_64-apple-darwin
+            output: mcwpack-macos.zip
             archive: zip
     steps:
       - uses: actions/checkout@master
@@ -27,3 +30,5 @@ jobs:
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
+          ARCHIVE_NAME: ${{ matrix.output }}
+          EXTRA_FILES: "README.md LICENSE"
