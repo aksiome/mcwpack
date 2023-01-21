@@ -13,7 +13,7 @@ mod models;
 mod utils;
 
 #[derive(Parser)]
-#[clap(name = "Minecraft World Packager", version = "0.1", author = "Aksiome")]
+#[clap(name = "Minecraft World Packager", version = "0.2", author = "Aksiome")]
 pub struct Opts {
     #[clap(value_name = "WORLD_PATH")]
     world: Option<PathBuf>,
