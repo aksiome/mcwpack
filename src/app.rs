@@ -35,18 +35,20 @@ impl App {
     }
 
     pub fn package(&self, output: Output) {
-        let started = Instant::now();
-        utils::print_start(&self.world);
-        utils::print_done(&match output {
-            Output::Dir(to) => {
-                self.package_dir(&to);
-                to
-            }
-            Output::Zip(to) => {
-                self.package_zip(&to);
-                to.with_extension("zip")
-            }
-        }, started.elapsed());
+        if match &output {
+            Output::Dir(to) if to.exists() =>
+                utils::confirm("The output directory already exists, do you want to continue?", false),
+            Output::Zip(to) if to.with_extension("zip").exists() =>
+                utils::confirm("The output zip file already exists, do you want to replace it?", false),
+            _ => true,
+        } {
+            let started = Instant::now();
+            utils::print_start(&self.world);
+            utils::print_done(&match output {
+                Output::Dir(to) => { self.package_dir(&to); to },
+                Output::Zip(to) => { self.package_zip(&to); to.with_extension("zip") },
+            }, started.elapsed());
+        }
     }
 
     fn package_dir(&self, to: &Path) {

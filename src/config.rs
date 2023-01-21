@@ -82,12 +82,12 @@ impl Config {
     }
 
     fn create_or_edit(path: &Path, contents: &str) -> Option<Self> {
-        if !utils::confirm("Do you want to edit the config file?") {
+        if !utils::confirm("Do you want to edit the config file?", true) {
             return None;
         }
         edit::edit(contents).ok().and_then(|contents| {
             Self::try_parse(&contents).map(|config| {
-                if utils::confirm("Do you want to save the config file?") {
+                if utils::confirm("Do you want to save the config file?", true) {
                     fs::write(path, &contents).unwrap_or_else(|err| {
                         log::error!("{err}");
                     });

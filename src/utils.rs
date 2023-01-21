@@ -82,8 +82,8 @@ impl Autocomplete for PathCompletion {
     }
 }
 
-pub fn confirm(message: &str) -> bool {
-    Confirm::new(message).with_default(true).prompt().unwrap_or(false)
+pub fn confirm(message: &str, default: bool) -> bool {
+    Confirm::new(message).with_default(default).prompt().unwrap_or(false)
 }
 
 pub fn enter_path(message: &str, exists: bool) -> PathBuf {
