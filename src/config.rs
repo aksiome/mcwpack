@@ -11,6 +11,8 @@ pub const DEFAULT_CONTENTS: &str = "#### MCWPACK CONFIG FILE ####
 
 # Level name (supports minecraft color codes)
 name: null
+# Directory name inside the archive
+dirname: null
 # Resourcepack directory (or zip archive)
 resourcepack: null
 # Remove empty chunks from the world
@@ -33,7 +35,8 @@ packaged_entries:
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub name: Option<String>,
-    #[serde(deserialize_with="deserialize_path")]
+    pub dirname: Option<String>,
+    #[serde(deserialize_with = "deserialize_path")]
     pub resourcepack: Option<PathBuf>,
     #[serde(default)]
     pub clean_chunks: bool,
@@ -41,7 +44,7 @@ pub struct Config {
     pub reset_player: bool,
     #[serde(default)]
     pub zip_datapacks: bool,
-    #[serde(rename="packaged_entries", deserialize_with="deserialize_override")]
+    #[serde(rename = "packaged_entries", deserialize_with = "deserialize_override")]
     pub overrides: Override,
 }
 
