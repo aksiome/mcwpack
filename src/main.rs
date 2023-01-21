@@ -29,7 +29,7 @@ pub struct Opts {
     /// Show debug trace
     #[arg(short, conflicts_with = "quiet")]
     verbose: bool,
-    /// Silences warning
+    /// Silence warning
     #[arg(short, conflicts_with = "verbose")]
     quiet: bool,
 }
