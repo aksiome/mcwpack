@@ -9,9 +9,12 @@ use fastanvil::Region as Chunks;
 use fastnbt::Value;
 use serde::{Serialize, Deserialize};
 
+use crate::config::Config;
+
 type Compound = HashMap<String, fastnbt::Value>;
 
-pub struct Region {
+pub struct Region<'a> {
+    config: &'a Config,
     chunks: Chunks<File>,
 }
 
@@ -54,7 +57,7 @@ impl Chunk {
         Ok(fastnbt::from_bytes(&data.data)?)
     }
 
-    pub fn is_chunk_empty(&self) -> bool {
+    pub fn is_chunk_empty(&self, ignored_blocks: &Vec<String>) -> bool {
         self.other.get("Status").map_or(false, |v| v != "full") ||
         !self.block_entities.as_ref().map_or(false, |chunk| !chunk.is_empty()) &&
         !self.entities.as_ref().map_or(false, |chunk| !chunk.is_empty()) &&
@@ -63,7 +66,7 @@ impl Chunk {
             for section in chunk.iter() {
                 if let Some(block_states) = &section.block_states {
                     for item in &block_states.palette {
-                        if item.name != "minecraft:air" {
+                        if !ignored_blocks.contains(&item.name) {
                             return true;
                         }
                     }
@@ -74,10 +77,10 @@ impl Chunk {
     }
 }
 
-impl Region {
-    pub fn load(from: &Path) -> Result<Self> {
+impl<'a> Region<'a> {
+    pub fn load(from: &Path, config: &'a Config) -> Result<Self> {
         let chunks = Chunks::from_stream(File::open(from)?)?;
-        Ok(Self { chunks })
+        Ok(Self { chunks, config })
     }
 
     pub fn write_cleaned(&mut self, to: &Path) -> Result<()> {
@@ -85,7 +88,7 @@ impl Region {
         for data in self.chunks.borrow_mut().iter() {
             let data = &data?;
             let chunk = &Chunk::new(data)?;
-            if !chunk.is_chunk_empty() {
+            if !chunk.is_chunk_empty(&self.config.ignored_blocks) {
                 let ser = fastnbt::to_bytes(chunk)?;
                 if chunks.is_none() {
                     let file = File::options().read(true).write(true).create(true).truncate(true).open(to)?;

@@ -32,7 +32,7 @@ impl Entry for RegionEntry {
             return Ok(());
         }
         match config.clean_chunks {
-            true => Region::load(&self.path)
+            true => Region::load(&self.path, config)
                 .with_context(|| format!("could not read region ({})", self.path.to_string_lossy()))?
                 .write_cleaned(&to)
                 .with_context(|| format!("could not process region ({})", self.path.to_string_lossy())),

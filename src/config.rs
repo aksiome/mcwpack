@@ -39,13 +39,19 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_path")]
     pub resourcepack: Option<PathBuf>,
     #[serde(default)]
-    pub clean_chunks: bool,
-    #[serde(default)]
     pub reset_player: bool,
     #[serde(default)]
     pub zip_datapacks: bool,
+    #[serde(default)]
+    pub clean_chunks: bool,
+    #[serde(default = "ignored_blocks")]
+    pub ignored_blocks: Vec<String>,
     #[serde(rename = "packaged_entries", deserialize_with = "deserialize_override")]
     pub overrides: Override,
+}
+
+fn ignored_blocks() -> Vec<String> {
+    vec!["minecraft:air".to_owned()]
 }
 
 fn deserialize_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
