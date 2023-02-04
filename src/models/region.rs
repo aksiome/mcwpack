@@ -56,7 +56,7 @@ impl Chunk {
         Ok(fastnbt::from_bytes(&data.data)?)
     }
 
-    pub fn is_chunk_empty(&self, ignored_blocks: &Vec<String>) -> bool {
+    pub fn is_chunk_empty(&self, ignored_blocks: &[String]) -> bool {
         self.other.get("Status").map_or(false, |v| v != "full") ||
         !self.block_entities.as_ref().map_or(false, |chunk| !chunk.is_empty()) &&
         !self.entities.as_ref().map_or(false, |chunk| !chunk.is_empty()) &&
