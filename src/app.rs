@@ -14,6 +14,7 @@ use crate::entries::file::FileEntry;
 use crate::entries::level::LevelEntry;
 use crate::entries::region::RegionEntry;
 use crate::entries::rp::ResourcePackEntry;
+use crate::entries::scoreboard::ScoreboardEntry;
 use crate::entries::{Entry, WorldEntry};
 use crate::utils;
 
@@ -94,7 +95,7 @@ impl App {
     fn walker_entries(&self) -> Vec<WorldEntry> {
         let entries = Mutex::new(Vec::new());
         let walker = WalkBuilder::new("./")
-            .overrides(self.config.overrides.to_owned())
+            .overrides(self.config.accepted_entries.to_owned())
             .same_file_system(true)
             .build_parallel();
 
@@ -102,6 +103,7 @@ impl App {
             let entry = entry.ok().map(|entry| {
                 DataPackEntry::try_create(entry.path())
                     .or_else(|| RegionEntry::try_create(entry.path()))
+                    .or_else(|| ScoreboardEntry::try_create(entry.path()))
                     .or_else(|| LevelEntry::try_create(entry.path()))
                     .or_else(|| FileEntry::try_create(entry.path()))
             });

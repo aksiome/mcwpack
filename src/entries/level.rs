@@ -27,13 +27,17 @@ impl Entry for LevelEntry {
         let to = to.to_owned().join(&self.path);
         fs::create_dir_all(to.parent().unwrap())?;
         let mut level = Level::load(&self.path)?;
-        if let Some(name) = &config.name { level.set_name(name) }
-        config.reset_player.then(|| level.reset_player());
+
+        if let Some(name) = &config.name {
+            level.data.name = name.to_owned()
+        }
+        config.reset_player.then(|| level.data.player.clear());
         config.zip_datapacks.then(|| level.update_all_datapacks(|value: &mut String| {
             if value.starts_with("file/") && !value.ends_with(".zip") {
                 value.push_str(".zip");
             } 
         }));
+
         level.write(&to)
     }
 }

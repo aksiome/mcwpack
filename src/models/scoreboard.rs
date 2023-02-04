@@ -5,38 +5,44 @@ use std::path::Path;
 
 use anyhow::Result;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-type Edit = fn(&mut String);
 type Compound = HashMap<String, fastnbt::Value>;
 
 #[derive(Serialize, Deserialize)]
-pub struct Level {
-    #[serde(rename = "Data")]
+pub struct Scoreboard {
     pub data: Data,
+    #[serde(rename = "DataVersion")]
+    pub version: u16,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Data {
-    #[serde(rename = "LevelName")]
-    pub name: String,
-    #[serde(rename = "Player")]
-    pub player: Compound,
-    #[serde(rename = "DataPacks")]
-    pub datapacks: DataPacks,
+    #[serde(rename = "PlayerScores")]
+    pub scores: Vec<Score>,
+    #[serde(rename = "Objectives")]
+    pub objectives: Vec<Objective>,
     #[serde(flatten)]
     other: Compound,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct DataPacks {
-    #[serde(rename = "Enabled")]
-    pub enabled: Vec<String>,
-    #[serde(rename = "Disabled")]
-    pub disabled: Vec<String>,
+pub struct Score {
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(flatten)]
+    other: Compound,
 }
 
-impl Level {
+#[derive(Serialize, Deserialize)]
+pub struct Objective {
+    #[serde(rename = "Name")]
+    pub name: String,
+    #[serde(flatten)]
+    other: Compound,
+}
+
+impl Scoreboard {
     pub fn load(from: &Path) -> Result<Self> {
         let file = File::open(from)?;
         let mut decoder = GzDecoder::new(file);
@@ -51,22 +57,5 @@ impl Level {
         let mut encoder = GzEncoder::new(file, Compression::fast());
         encoder.write_all(&bytes)?;
         Ok(())
-    }
-
-    pub fn update_all_datapacks(&mut self, callback: Edit) {
-        self.update_enabled_datapacks(callback);
-        self.update_disabled_datapacks(callback);
-    }
-
-    pub fn update_disabled_datapacks(&mut self, callback: Edit) {
-        for datapack in self.data.datapacks.disabled.iter_mut() {
-            callback(datapack);
-        }
-    }
-
-    pub fn update_enabled_datapacks(&mut self, callback: Edit) {
-        for datapack in self.data.datapacks.enabled.iter_mut() {
-            callback(datapack);
-        }
     }
 }

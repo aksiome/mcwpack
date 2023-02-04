@@ -1,28 +1,29 @@
 [package]
 name = "mcwpack"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.68"
-clap = { version = "4.1.1", features = ["derive"] }
-console = "0.15.4"
-edit = "0.1.4"
-enum_dispatch = "0.3.11"
-env_logger = "0.10.0"
-fastanvil = "0.26.0"
-fastnbt = "2.3.2"
-flate2 = "1.0.25"
-fs_extra = "1.2.0"
-ignore = "0.4.19"
-indicatif = { version = "0.17.2", features = ["rayon"] }
-inquire = { version = "0.5.3", default-features = false, features = ["console"] }
-log = "0.4.17"
-rayon = "1.6.1"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_yaml = "0.9.16"
-tempfile = "3.3.0"
-zip-extensions = "0.6.1"
+anyhow = "1.0"
+clap = { version = "4.1", features = ["derive", "cargo"] }
+console = "0.15"
+edit = "0.1"
+enum_dispatch = "0.3"
+env_logger = "0.10"
+fastanvil = "0.26"
+fastnbt = "2.3"
+flate2 = "1.0"
+fs_extra = "1.2"
+globset = "0.4"
+ignore = "0.4"
+indicatif = { version = "0.17", features = ["rayon"] }
+inquire = { version = "0.5", default-features = false, features = ["console"] }
+log = "0.4"
+rayon = "1.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+tempfile = "3.3"
+zip-extensions = "0.6"
 
 [profile.release]
 strip = true

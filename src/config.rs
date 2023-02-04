@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use globset::{GlobSetBuilder, GlobSet, Glob};
 use ignore::overrides::{Override, OverrideBuilder};
 use serde::{Deserialize, Deserializer};
 
@@ -15,21 +16,30 @@ name: null
 dirname: null
 # Resourcepack directory (or zip archive)
 resourcepack: null
-# Remove empty chunks from the world
-clean_chunks: true
 # Reset player data in level.dat
 reset_player: true
 # Archive all non-archived datapacks
 zip_datapacks: true
-# Filter accepted entries (using glob patterns)
-packaged_entries:
-  - \"data/*.dat\"
-  - \"datapacks/*\"
-  - \"poi/*.mca\"
-  - \"region/*.mca\"
-  - \"entities/*.mca\"
-  - \"icon.png\"
-  - \"level.dat\"
+# Remove empty chunks from the world
+clean_chunks: true
+# Ignored blocks when cleaning chunks (default: minecraft:air)
+# The following will delete chunks that only contain air or stone
+# ignored_blocks:
+#   - minecraft:air
+#   - minecraft:stone
+# Filter accepted scores (using glob patterns)
+# accepted_scores:
+# Filter accepted objectives (using glob patterns)
+# accepted_objectives:
+# Filter accepted file entries (using glob patterns)
+accepted_entries:
+  - data/*.dat
+  - datapacks/*
+  - poi/*.mca
+  - region/*.mca
+  - entities/*.mca
+  - icon.png
+  - level.dat
 ";
 
 #[derive(Deserialize, Debug)]
@@ -46,8 +56,12 @@ pub struct Config {
     pub clean_chunks: bool,
     #[serde(default = "ignored_blocks")]
     pub ignored_blocks: Vec<String>,
-    #[serde(rename = "packaged_entries", deserialize_with = "deserialize_override")]
-    pub overrides: Override,
+    #[serde(default, deserialize_with = "deserialize_globs")]
+    pub accepted_scores: GlobSet,
+    #[serde(default, deserialize_with = "deserialize_globs")]
+    pub accepted_objectives: GlobSet,
+    #[serde(deserialize_with = "deserialize_override")]
+    pub accepted_entries: Override,
 }
 
 fn ignored_blocks() -> Vec<String> {
@@ -72,6 +86,18 @@ where
         overrides.add(&pattern).map_err(serde::de::Error::custom)?;
     }
     overrides.build().map_err(serde::de::Error::custom)
+}
+
+fn deserialize_globs<'de, D>(deserializer: D) -> Result<GlobSet, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let patterns: Vec<String> = Deserialize::deserialize(deserializer)?;
+    let mut globset = GlobSetBuilder::new();
+    for pattern in patterns {
+        globset.add(Glob::new(&pattern).map_err(serde::de::Error::custom)?);
+    }
+    globset.build().map_err(serde::de::Error::custom)
 }
 
 impl Config {

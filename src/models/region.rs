@@ -13,33 +13,32 @@ use crate::config::Config;
 
 type Compound = HashMap<String, fastnbt::Value>;
 
-pub struct Region<'a> {
-    config: &'a Config,
-    chunks: Chunks<File>,
+pub struct Region {
+    pub chunks: Chunks<File>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Chunk {
     #[serde(rename = "Sections")]
-    poi: Option<Compound>,
+    pub poi: Option<Compound>,
     #[serde(rename = "Entities")]
-    entities: Option<Vec<Compound>>,
-    sections: Option<Vec<Section>>,
-    block_entities: Option<Vec<Compound>>,
+    pub entities: Option<Vec<Compound>>,
+    pub sections: Option<Vec<Section>>,
+    pub block_entities: Option<Vec<Compound>>,
     #[serde(flatten)]
     other: Compound,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Section {
-    block_states: Option<BlockStates>,
+    pub block_states: Option<BlockStates>,
     #[serde(flatten)]
     other: Compound,
 }
 
 #[derive(Serialize, Deserialize)]
 struct BlockStates {
-    palette: Vec<PaletteItem>,
+    pub palette: Vec<PaletteItem>,
     #[serde(flatten)]
     other: Compound,
 }
@@ -47,9 +46,9 @@ struct BlockStates {
 #[derive(Serialize, Deserialize)]
 struct PaletteItem {
     #[serde(rename = "Name")]
-    name: String,
+    pub name: String,
     #[serde(rename = "Properties")]
-    properties: Option<Value>,
+    pub properties: Option<Value>,
 }
 
 impl Chunk {
@@ -77,18 +76,18 @@ impl Chunk {
     }
 }
 
-impl<'a> Region<'a> {
-    pub fn load(from: &Path, config: &'a Config) -> Result<Self> {
+impl Region {
+    pub fn load(from: &Path) -> Result<Self> {
         let chunks = Chunks::from_stream(File::open(from)?)?;
-        Ok(Self { chunks, config })
+        Ok(Self { chunks })
     }
 
-    pub fn write_cleaned(&mut self, to: &Path) -> Result<()> {
+    pub fn write_cleaned(&mut self, to: &Path, config: &Config) -> Result<()> {
         let mut chunks = None;
         for data in self.chunks.borrow_mut().iter() {
             let data = &data?;
             let chunk = &Chunk::new(data)?;
-            if !chunk.is_chunk_empty(&self.config.ignored_blocks) {
+            if !chunk.is_chunk_empty(&config.ignored_blocks) {
                 let ser = fastnbt::to_bytes(chunk)?;
                 if chunks.is_none() {
                     let file = File::options().read(true).write(true).create(true).truncate(true).open(to)?;

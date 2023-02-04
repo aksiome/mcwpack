@@ -10,12 +10,14 @@ use self::file::FileEntry;
 use self::level::LevelEntry;
 use self::region::RegionEntry;
 use self::rp::ResourcePackEntry;
+use self::scoreboard::ScoreboardEntry;
 
 pub mod dp;
 pub mod file;
 pub mod level;
 pub mod region;
 pub mod rp;
+pub mod scoreboard;
 
 #[enum_dispatch]
 pub trait Entry {
@@ -24,8 +26,9 @@ pub trait Entry {
 
 #[enum_dispatch(Entry)]
 pub enum WorldEntry {
-    ResourcePack(ResourcePackEntry),
     DataPack(DataPackEntry),
+    ResourcePack(ResourcePackEntry),
+    Scoreboard(ScoreboardEntry),
     Region(RegionEntry),
     Level(LevelEntry),
     File(FileEntry),
