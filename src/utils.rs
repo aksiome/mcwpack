@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Write;
-use std::path::{self, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -8,9 +8,8 @@ use anyhow::Result;
 use env_logger::Builder;
 use env_logger::fmt::Color;
 use fs_extra::dir;
-use inquire::autocompletion::Replacement;
 use inquire::validator::{StringValidator, Validation};
-use inquire::{Confirm, Text, CustomUserError, Autocomplete};
+use inquire::{Confirm, Text, CustomUserError};
 use log::{Level, LevelFilter};
 
 #[derive(Clone)]
@@ -36,62 +35,12 @@ impl StringValidator for PathValidator {
     }
 }
 
-#[derive(Clone, Default)]
-struct PathCompletion {
-    input: String,
-    values: Vec<String>,
-}
-
-impl PathCompletion {
-    fn update_values(&mut self, input: &str) -> Result<(), CustomUserError> {
-        self.values.clear();
-        self.input = input.to_owned();
-
-        let path = PathBuf::from(input);
-        let dir = match input.chars().last() {
-            Some(c) if path::is_separator(c) => path,
-            _ => path.parent().map_or_else(|| PathBuf::from(""), |path| path.to_owned()),
-        };
-
-        fs::read_dir(dir)?.filter_map(|entry| entry.ok()).for_each(|entry| {
-            let value = match entry.path() {
-                path if path.is_dir() => format!("{}{}", path.to_string_lossy(), path::MAIN_SEPARATOR),
-                path => path.to_string_lossy().to_string()
-            };
-
-            if value.starts_with(&self.input) && value.len() != self.input.len() {
-                self.values.push(value);
-            }
-        });
-        Ok(())
-    }
-}
-
-impl Autocomplete for PathCompletion {
-    fn get_completion(&mut self, input: &str, suggestion: Option<String>) -> Result<Replacement, CustomUserError> {
-        if input != self.input { self.update_values(input)? }
-        Ok(match suggestion {
-            Some(suggestion) => Replacement::Some(suggestion),
-            None => self.values.first().map(|v| v.to_owned()),
-        })
-    }
-
-    fn get_suggestions(&mut self, input: &str) -> Result<Vec<String>, CustomUserError> {
-        if input != self.input { self.update_values(input)? }
-        Ok(self.values.to_owned())
-    }
-}
-
 pub fn confirm(message: &str, default: bool) -> bool {
     Confirm::new(message).with_default(default).prompt().unwrap_or(false)
 }
 
 pub fn enter_path(message: &str, exists: bool) -> PathBuf {
-    if exists {
-        Text::new(message).with_autocomplete(PathCompletion::default())
-    } else {
-        Text::new(message)
-    }.with_validator(PathValidator::new(exists)).prompt().map(
+    Text::new(message).with_validator(PathValidator::new(exists)).prompt().map(
         |value| PathBuf::from_str(&value).ok()
     ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
 }
