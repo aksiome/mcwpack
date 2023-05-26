@@ -17,14 +17,16 @@ impl DirWriter {
 
 impl Writer for DirWriter {
     fn copy(&mut self, entry: &Path) -> Result<()> {
-        let path = self.root.join(entry);
-
         if entry.is_file() {
+            let path = self.root.join(entry);
+            std::fs::create_dir_all(path.parent().unwrap())?;
             std::fs::copy(entry, path)?;
         } else if entry.is_dir() {
             let walker = WalkBuilder::new(entry).same_file_system(true).build();
             for entry in walker.into_iter().filter_map(|file| file.ok()) {
-                std::fs::copy(entry.path(), self.root.join(entry.path()))?;
+                let path = self.root.join(entry.path());
+                std::fs::create_dir_all(path.parent().unwrap())?;
+                std::fs::copy(entry.path(), path)?;
             }
         };
 
