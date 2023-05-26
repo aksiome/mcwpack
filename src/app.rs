@@ -71,7 +71,7 @@ impl App {
         let mut entries = vec![];
         entries.append(&mut self.world_entries());
         entries.append(&mut self.extra_entries());
-        self.package(entries, Mutex::new(target.writer(&self)));
+        self.package(entries, Mutex::new(target.writer(self)));
 
         println!(
             "   {} {} ({}) in {:.2}s",
