@@ -11,7 +11,8 @@ This tool is used to automatically prepare a Minecraft World for release. This p
 - Delete chunks that are considered empty (filled only with air / with no entities / with no poi)
 - Zip all datapacks and update the level.dat accordingly
 - Zip and add a resourcepack to the world if provided
-- Set the world name
+- Filter scores and objectives
+- Set the level.dat world name
 
 ## How to use
 
