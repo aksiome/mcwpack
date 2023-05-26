@@ -1,16 +1,14 @@
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::io::Cursor;
+use std::path::{PathBuf, Path};
 use std::str::FromStr;
-use std::time::Duration;
 
 use anyhow::Result;
-use env_logger::Builder;
-use env_logger::fmt::Color;
-use fs_extra::dir;
+use ignore::WalkBuilder;
 use inquire::validator::{StringValidator, Validation};
-use inquire::{Confirm, Text, CustomUserError};
-use log::{Level, LevelFilter};
+use inquire::{Confirm, CustomUserError, Text};
+
+use crate::writers::Writer;
+use crate::writers::zip::ZipWriter;
 
 #[derive(Clone)]
 struct PathValidator {
@@ -36,7 +34,7 @@ impl StringValidator for PathValidator {
 }
 
 pub fn confirm(message: &str, default: bool) -> bool {
-    Confirm::new(message).with_default(default).prompt().unwrap_or(false)
+    Confirm::new(message).with_default(default).prompt().unwrap_or(default)
 }
 
 pub fn enter_path(message: &str, exists: bool) -> PathBuf {
@@ -45,57 +43,17 @@ pub fn enter_path(message: &str, exists: bool) -> PathBuf {
     ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
 }
 
-pub fn copy_file(from: &Path, to: &Path) -> Result<()> {
-    fs::copy(from, to)?;
-    Ok(())
-}
+pub fn create_zip_from_directory(dir: &Path) -> Result<Vec<u8>> {
+    let mut writer = ZipWriter::<Cursor<Vec<u8>>>::new(vec![]);
+    for entry in WalkBuilder::new(dir).same_file_system(true).build() {
+        let entry = entry?;
+        if entry.path().is_file() {
+            writer.write(
+                entry.path().strip_prefix(dir)?,
+                std::fs::read(entry.path())?,
+            )?;
+        }
+    }
 
-pub fn copy_dir(from: &Path, to: &Path) -> Result<()> {
-    let mut options = dir::CopyOptions::new();
-    options.content_only = true;
-    dir::copy(from, to, &options)?;
-    Ok(())
-}
-
-pub fn create_zip(from: &Path, to: &Path) -> Result<()> {
-    zip_extensions::zip_create_from_directory(&to.with_extension("zip"), &from.to_owned())?;
-    Ok(())
-}
-
-pub fn print_start(from: &Path) {
-    println!(
-        "  {} {} ({})",
-        console::style("Packaging").green().bold(),
-        from.file_name().unwrap().to_string_lossy(),
-        from.to_string_lossy(),
-    );
-}
-
-pub fn print_done(to: &Path, time: Duration) {
-    println!(
-        "   {} {} ({}) in {:.2}s",
-        console::style("Finished").green().bold(),
-        to.file_name().unwrap().to_string_lossy(),
-        to.canonicalize().unwrap().to_string_lossy(),
-        time.as_secs_f32(),
-    );
-}
-
-pub fn init_logger(level: LevelFilter) {
-    Builder::new().filter(Some("mcwpack"), level).format(|buf, record| {
-        let mut style = buf.style();
-        style.set_bold(true);
-        writeln!(
-            buf,
-            "{}: {}",
-            match record.level() {
-                Level::Trace => style.set_color(Color::Black).value(" ❱"),
-                Level::Debug => style.set_color(Color::Magenta).value("debug"),
-                Level::Info => style.set_color(Color::Cyan).value("info"),
-                Level::Warn => style.set_color(Color::Yellow).value("warn"),
-                Level::Error => style.set_color(Color::Red).value("error"),
-            },
-            record.args(),
-        )
-    }).init();
+    Ok(writer.finish()?.into_inner())
 }

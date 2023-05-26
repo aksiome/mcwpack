@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use globset::{GlobSetBuilder, GlobSet, Glob};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
 use serde::{Deserialize, Deserializer};
 

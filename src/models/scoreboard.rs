@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
-
-use anyhow::Result;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use super::nbt::NbtFormat;
 
 type Compound = HashMap<String, fastnbt::Value>;
+
+impl NbtFormat for Scoreboard {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Scoreboard {
@@ -40,22 +38,4 @@ pub struct Objective {
     pub name: String,
     #[serde(flatten)]
     other: Compound,
-}
-
-impl Scoreboard {
-    pub fn load(from: &Path) -> Result<Self> {
-        let file = File::open(from)?;
-        let mut decoder = GzDecoder::new(file);
-        let mut bytes = vec![];
-        decoder.read_to_end(&mut bytes)?;
-        Ok(fastnbt::from_bytes(&bytes)?)
-    }
-
-    pub fn write(&self, to: &Path) -> Result<()> {
-        let file = File::create(to)?;
-        let bytes = fastnbt::to_bytes(self)?;
-        let mut encoder = GzEncoder::new(file, Compression::fast());
-        encoder.write_all(&bytes)?;
-        Ok(())
-    }
 }

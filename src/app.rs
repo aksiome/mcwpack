@@ -1,118 +1,131 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use ignore::WalkBuilder;
-use ignore::WalkState::*;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
+use ignore::{WalkBuilder, WalkState::*};
+use indicatif::ProgressBar;
+use indicatif::ProgressDrawTarget;
+use indicatif::ParallelProgressIterator;
+use indicatif::ProgressStyle;
 use rayon::prelude::*;
-use tempfile::TempDir;
 
 use crate::config::Config;
-use crate::entries::dp::DataPackEntry;
-use crate::entries::file::FileEntry;
-use crate::entries::level::LevelEntry;
-use crate::entries::region::RegionEntry;
-use crate::entries::rp::ResourcePackEntry;
-use crate::entries::scoreboard::ScoreboardEntry;
-use crate::entries::{Entry, WorldEntry};
-use crate::utils;
+use crate::packagers::*;
+use crate::writers::Writer;
+use crate::writers::dir::DirWriter;
+use crate::writers::zip::ZipWriter;
 
-const PROGRESS: &str = "   {prefix:.cyan.bold} {bar:35} {pos}/{len} files";
-
-pub struct App {
-    world: PathBuf,
-    config: Config,
+lazy_static::lazy_static! {
+    pub static ref PROGRESS: ProgressBar = {
+        let template = "   {prefix:.cyan.bold} [{bar:35}] {pos}/{len} files";
+        let style = ProgressStyle::with_template(template).unwrap().progress_chars("=>-");
+        ProgressBar::hidden().with_style(style).with_prefix("Progress")
+    };
 }
 
-pub enum Output {
+pub enum Target {
     Dir(PathBuf),
     Zip(PathBuf),
 }
 
-impl App {
-    pub fn new(world: PathBuf, config: Config) -> Self {
-        Self { world, config }
-    }
+pub struct App {
+    config: Config,
+}
 
-    pub fn package(&self, output: Output) {
-        if match &output {
-            Output::Dir(to) if to.exists() =>
-                utils::confirm("The output directory already exists, do you want to continue?", false),
-            Output::Zip(to) if to.with_extension("zip").exists() =>
-                utils::confirm("The output zip file already exists, do you want to replace it?", false),
-            _ => true,
-        } {
-            let started = Instant::now();
-            utils::print_start(&self.world);
-            utils::print_done(&match output {
-                Output::Dir(to) => { self.package_dir(&to); to },
-                Output::Zip(to) => { self.package_zip(&to); to.with_extension("zip") },
-            }, started.elapsed());
+impl Target {
+    pub fn path(&self) -> &Path {
+        match self {
+            Self::Dir(path) => path,
+            Self::Zip(path) => path,
         }
     }
 
-    fn package_dir(&self, to: &Path) {
-        std::env::set_current_dir(&self.world).expect("could not set working dir");
+    pub fn writer(&self, app: &App) -> Box<dyn Writer> {
+        match self {
+            Self::Dir(path) => Box::new(DirWriter::new(path)),
+            Self::Zip(path) => Box::new(ZipWriter::create(
+                path,
+                app.config.dirname.as_deref()
+            )),
+        }
+    }
+}
 
-        let mut entries = Vec::new();
+impl App {
+    pub fn new(config: Config, world: PathBuf) -> Self {
+        std::env::set_current_dir(world).expect("could not set working dir");
+
+        Self { config }
+    }
+
+    pub fn run(&self, target: Target) {
+        println!(
+            "  {} {} ({})",
+            console::style("Packaging").green().bold(),
+            std::env::current_dir().unwrap().file_name().unwrap().to_string_lossy(),
+            std::env::current_dir().unwrap().to_string_lossy(),
+        );
+
+        let time = Instant::now();
+        let mut entries = vec![];
+        entries.append(&mut self.world_entries());
         entries.append(&mut self.extra_entries());
-        entries.append(&mut self.walker_entries());
+        self.package(entries, Mutex::new(target.writer(&self)));
 
-        let style = ProgressStyle::with_template(PROGRESS).unwrap().progress_chars("=>-");
-        let progress = ProgressBar::new(entries.len() as u64).with_style(style).with_prefix("Progress");
+        println!(
+            "   {} {} ({}) in {:.2}s",
+            console::style("Finished").green().bold(),
+            target.path().file_name().unwrap().to_string_lossy(),
+            target.path().canonicalize().unwrap().to_string_lossy(),
+            time.elapsed().as_secs_f32(),
+        );
+    }
 
-        entries.par_iter().progress_with(progress.to_owned()).for_each(|entry| {
-            let result = entry.package(&self.config, to);
-            result.unwrap_or_else(|err| {
-                progress.suspend(|| {
-                    log::warn!("{err}");
-                    for cause in err.chain().skip(1) {
-                        log::trace!("{cause}");
-                    }
-                })
+    fn package(&self, entries: Vec<(PathBuf, &dyn Packager)>, writer: Mutex<Box<dyn Writer>>) {
+        PROGRESS.set_length(entries.len() as u64);
+        PROGRESS.set_draw_target(ProgressDrawTarget::stderr());
+
+        entries.par_iter().progress_with(PROGRESS.to_owned()).for_each(|(path, packager)| {
+            packager.package(path, &self.config, &writer).unwrap_or_else(|err| {
+                log::warn!("{err}");
             });
         });
+
+        PROGRESS.finish_and_clear();
     }
 
-    fn package_zip(&self, to: &Path) {
-        let temp = TempDir::new().unwrap();
-        let dirname = self.config.dirname.to_owned().unwrap_or_else(|| {
-            self.world.file_name().unwrap().to_string_lossy().to_string()
-        });
-        self.package_dir(&temp.path().to_owned().join(PathBuf::from(dirname)));
-        utils::create_zip(temp.path(), to).unwrap_or_else(|err| log::error!("{err}"));
-    }
-
-    fn extra_entries(&self) -> Vec<WorldEntry> {
-        let mut entries = Vec::new();
+    fn extra_entries(&self) -> Vec<(PathBuf, &dyn Packager)> {
+        let mut entries = vec![];
         if let Some(path) = &self.config.resourcepack {
-            entries.push(ResourcePackEntry::create(path))
+            entries.push((path.to_owned(), &ResourcepackPackager as &dyn Packager));
         }
         entries
     }
 
-    fn walker_entries(&self) -> Vec<WorldEntry> {
-        let entries = Mutex::new(Vec::new());
+    fn world_entries(&self) -> Vec<(PathBuf, &dyn Packager)> {
+        let entries = Mutex::new(vec![]);
         let walker = WalkBuilder::new("./")
             .overrides(self.config.accepted_entries.to_owned())
             .same_file_system(true)
             .build_parallel();
 
-        walker.run(|| Box::new(|entry| {
-            let entry = entry.ok().map(|entry| {
-                DataPackEntry::try_create(entry.path())
-                    .or_else(|| RegionEntry::try_create(entry.path()))
-                    .or_else(|| ScoreboardEntry::try_create(entry.path()))
-                    .or_else(|| LevelEntry::try_create(entry.path()))
-                    .or_else(|| FileEntry::try_create(entry.path()))
-            });
-            if let Some(entry) = entry.flatten() {
-                entries.lock().unwrap().push(entry);
-                return Skip;
+        walker.run(|| Box::new(|result| {
+            match result.ok().and_then(|e| [
+                &DatapackPackager as &dyn Packager,
+                &RegionPackager as &dyn Packager,
+                &ScoreboardPackager as &dyn Packager,
+                &LevelPackager as &dyn Packager,
+                &FilePackager as &dyn Packager,
+            ].iter().find(|p| p.supports(e.path())).map(|p| (e.path().to_owned(), *p))) {
+                None => Continue,
+                Some(e) => {
+                    entries.lock().unwrap().push(e);
+                    Skip
+                }
             }
-            Continue
         }));
+
         entries.into_inner().unwrap()
     }
 }

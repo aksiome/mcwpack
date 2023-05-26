@@ -1,14 +1,8 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
+use serde::{Deserialize, Serialize};
 
-use anyhow::Result;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use serde::{Serialize, Deserialize};
+use super::nbt::{NbtFormat, Compound};
 
-type Edit = fn(&mut String);
-type Compound = HashMap<String, fastnbt::Value>;
+impl NbtFormat for Level {}
 
 #[derive(Serialize, Deserialize)]
 pub struct Level {
@@ -37,34 +31,18 @@ pub struct DataPacks {
 }
 
 impl Level {
-    pub fn load(from: &Path) -> Result<Self> {
-        let file = File::open(from)?;
-        let mut decoder = GzDecoder::new(file);
-        let mut bytes = vec![];
-        decoder.read_to_end(&mut bytes)?;
-        Ok(fastnbt::from_bytes(&bytes)?)
+    pub fn walk_datapacks(&mut self, callback: fn(&mut String)) {
+        self.walk_enabled_datapacks(callback);
+        self.walk_disabled_datapacks(callback);
     }
 
-    pub fn write(&self, to: &Path) -> Result<()> {
-        let file = File::create(to)?;
-        let bytes = fastnbt::to_bytes(self)?;
-        let mut encoder = GzEncoder::new(file, Compression::fast());
-        encoder.write_all(&bytes)?;
-        Ok(())
-    }
-
-    pub fn update_all_datapacks(&mut self, callback: Edit) {
-        self.update_enabled_datapacks(callback);
-        self.update_disabled_datapacks(callback);
-    }
-
-    pub fn update_disabled_datapacks(&mut self, callback: Edit) {
+    pub fn walk_disabled_datapacks(&mut self, callback: fn(&mut String)) {
         for datapack in self.data.datapacks.disabled.iter_mut() {
             callback(datapack);
         }
     }
 
-    pub fn update_enabled_datapacks(&mut self, callback: Edit) {
+    pub fn walk_enabled_datapacks(&mut self, callback: fn(&mut String)) {
         for datapack in self.data.datapacks.enabled.iter_mut() {
             callback(datapack);
         }
