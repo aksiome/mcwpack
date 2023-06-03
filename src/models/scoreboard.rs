@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-use super::nbt::NbtFormat;
-
-type Compound = HashMap<String, fastnbt::Value>;
+use super::nbt::{NbtFormat, Compound};
 
 impl NbtFormat for Scoreboard {}
 

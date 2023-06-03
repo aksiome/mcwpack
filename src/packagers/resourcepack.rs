@@ -23,7 +23,7 @@ impl Packager for ResourcepackPackager {
             true => writer.lock().unwrap().write(Path::new("resources.zip"), std::fs::read(entry)?),
             false => writer.lock().unwrap().write(
                 Path::new("resources.zip"),
-                utils::create_zip_from_directory(entry)?
+                utils::create_zip_from_dir(entry)?
             ),
         }
     }

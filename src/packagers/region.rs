@@ -26,11 +26,11 @@ impl Packager for RegionPackager {
 
         match config.clean_chunks {
             true => {
-                let contents = Region::load(entry).with_context(
-                    || format!("could not read region: {}", entry.to_string_lossy())
-                )?.optimize(config).with_context(
-                    || format!("could not process region: {}", entry.to_string_lossy())
-                )?;
+                let contents = Region::load(entry)
+                    .with_context(|| format!("could not read region: {}", entry.to_string_lossy()))?
+                    .optimize_bytes(config)
+                    .with_context(|| format!("could not process region: {}", entry.to_string_lossy()))?;
+
                 match contents.len() {
                     ..=8192 => log::info!("skipped empty region: {}", entry.to_string_lossy()),
                     _ => writer.lock().unwrap().write(entry, contents)?,

@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -103,7 +102,7 @@ where
 impl Config {
     pub fn load(path: &Path) -> Option<Self> {
         std::env::set_current_dir(path.parent().unwrap()).expect("could not set working dir");
-        fs::read_to_string(path).map_or_else(|_| {
+        std::fs::read_to_string(path).map_or_else(|_| {
             log::error!("could not read the config file!");
             Self::create_or_edit(path, DEFAULT_CONTENTS)
         }, |contents| Self::try_parse(&contents).or_else(|| Self::create_or_edit(path, &contents)))
@@ -120,7 +119,7 @@ impl Config {
         edit::edit(contents).ok().and_then(|contents| {
             Self::try_parse(&contents).map(|config| {
                 if utils::confirm("Do you want to save the config file?", true) {
-                    fs::write(path, &contents).unwrap_or_else(|err| {
+                    std::fs::write(path, &contents).unwrap_or_else(|err| {
                         log::error!("{err}");
                     });
                 }

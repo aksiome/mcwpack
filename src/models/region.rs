@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::fs::File;
 use std::io::Cursor;
 use std::path::Path;
@@ -87,9 +86,9 @@ impl Region {
         Ok(Self { chunks })
     }
 
-    pub fn optimize(&mut self, config: &Config) -> Result<Vec<u8>> {
+    pub fn optimize_bytes(&mut self, config: &Config) -> Result<Vec<u8>> {
         let mut chunks = Chunks::new(Cursor::new(vec![]))?;
-        for data in self.chunks.borrow_mut().iter() {
+        for data in self.chunks.iter() {
             let data = &data?;
             let chunk = &Chunk::new(data)?;
             if !chunk.is_chunk_empty(&config.ignored_blocks) {

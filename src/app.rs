@@ -1,13 +1,9 @@
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
 
 use ignore::{WalkBuilder, WalkState::*};
-use indicatif::ProgressBar;
-use indicatif::ProgressDrawTarget;
-use indicatif::ParallelProgressIterator;
-use indicatif::ProgressStyle;
+use indicatif::{ProgressBar, ProgressDrawTarget, ParallelProgressIterator, ProgressStyle};
 use rayon::prelude::*;
 
 use crate::config::Config;
@@ -31,6 +27,7 @@ pub enum Target {
 
 pub struct App {
     config: Config,
+    world: PathBuf,
 }
 
 impl Target {
@@ -54,24 +51,24 @@ impl Target {
 
 impl App {
     pub fn new(config: Config, world: PathBuf) -> Self {
-        std::env::set_current_dir(world).expect("could not set working dir");
-
-        Self { config }
+        Self { config, world }
     }
 
     pub fn run(&self, target: Target) {
+        std::env::set_current_dir(&self.world).expect("could not set working dir");
+
+        let time = Instant::now();
         println!(
             "  {} {} ({})",
             console::style("Packaging").green().bold(),
-            std::env::current_dir().unwrap().file_name().unwrap().to_string_lossy(),
-            std::env::current_dir().unwrap().to_string_lossy(),
+            self.world.file_name().unwrap().to_string_lossy(),
+            self.world.to_string_lossy(),
         );
 
-        let time = Instant::now();
         let mut entries = vec![];
         entries.append(&mut self.world_entries());
         entries.append(&mut self.extra_entries());
-        self.package(entries, Mutex::new(target.writer(self)));
+        self.package(&entries, Mutex::new(target.writer(self)));
 
         println!(
             "   {} {} ({}) in {:.2}s",
@@ -82,7 +79,8 @@ impl App {
         );
     }
 
-    fn package(&self, entries: Vec<(PathBuf, &dyn Packager)>, writer: Mutex<Box<dyn Writer>>) {
+    fn package(&self, entries: &[(PathBuf, &dyn Packager)], writer: Mutex<Box<dyn Writer>>) {
+        PROGRESS.reset();
         PROGRESS.set_length(entries.len() as u64);
         PROGRESS.set_draw_target(ProgressDrawTarget::stderr());
 

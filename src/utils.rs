@@ -43,7 +43,15 @@ pub fn enter_path(message: &str, exists: bool) -> PathBuf {
     ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
 }
 
-pub fn create_zip_from_directory(dir: &Path) -> Result<Vec<u8>> {
+pub fn copy_to_dir(entry: &Path, dir: &Path) -> Result<()> {
+    let path = dir.join(entry);
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    std::fs::copy(entry, path)?;
+
+    Ok(())
+}
+
+pub fn create_zip_from_dir(dir: &Path) -> Result<Vec<u8>> {
     let mut writer = ZipWriter::<Cursor<Vec<u8>>>::new(vec![]);
     for entry in WalkBuilder::new(dir).same_file_system(true).build() {
         let entry = entry?;

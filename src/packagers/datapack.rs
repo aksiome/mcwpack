@@ -22,7 +22,7 @@ impl Packager for DatapackPackager {
         match config.zip_datapacks {
             true if entry.is_dir() => writer.lock().unwrap().write(
                 &entry.with_extension("zip"),
-                utils::create_zip_from_directory(entry)?,
+                utils::create_zip_from_dir(entry)?,
             ),
             _ => writer.lock().unwrap().copy(entry),
         }
