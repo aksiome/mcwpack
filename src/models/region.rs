@@ -55,7 +55,7 @@ impl Chunk {
     }
 
     pub fn is_chunk_empty(&self, ignored_blocks: &[String]) -> bool {
-        if self.other.get("Status").map_or(false, |v| v != "full") {
+        if self.other.get("Status").map_or(false, |v| v != "full" && v != "minecraft:full") {
             return true;
         }
 
