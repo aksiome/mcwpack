@@ -100,12 +100,23 @@ where
 }
 
 impl Config {
-    pub fn load(path: &Path) -> Option<Self> {
+    pub fn load(path: &Path, noprompt: bool) -> Option<Self> {
         std::env::set_current_dir(path.parent().unwrap()).expect("could not set working dir");
+
         std::fs::read_to_string(path).map_or_else(|_| {
             log::error!("could not read the config file!");
+            if noprompt {
+                std::process::exit(1);
+            }
             Self::create_or_edit(path, DEFAULT_CONTENTS)
-        }, |contents| Self::try_parse(&contents).or_else(|| Self::create_or_edit(path, &contents)))
+        }, |contents| {
+            Self::try_parse(&contents).or_else(|| {
+                if noprompt {
+                    std::process::exit(1);
+                }
+                Self::create_or_edit(path, &contents)
+            })
+        })
     }
 
     fn try_parse(contents: &str) -> Option<Self> {
@@ -116,6 +127,7 @@ impl Config {
         if !utils::confirm("Do you want to edit the config file?", true) {
             return None;
         }
+
         edit::edit(contents).ok().and_then(|contents| {
             Self::try_parse(&contents).map(|config| {
                 if utils::confirm("Do you want to save the config file?", true) {
