@@ -44,8 +44,10 @@ impl Log for Logger {
             });
 
             match PROGRESS.is_hidden() {
-                true => println!("{}", msg),
-                false => PROGRESS.println(msg),
+                true => eprintln!("{}", msg),
+                false => PROGRESS.suspend(|| {
+                    eprintln!("{}", msg)
+                }),
             };
         }
     }

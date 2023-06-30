@@ -33,11 +33,14 @@ pub struct Opts {
     #[arg(short, value_name = "CONFIG_FILE")]
     config: Option<PathBuf>,
     /// Show debug trace
-    #[arg(short, conflicts_with = "quiet")]
+    #[arg(short, long, conflicts_with = "quiet")]
     verbose: bool,
     /// Silence warning
-    #[arg(short, conflicts_with = "verbose")]
+    #[arg(short, long, conflicts_with = "verbose")]
     quiet: bool,
+    /// Ignore prompts
+    #[arg(short, long)]
+    noprompt: bool,
 }
 
 fn main() {
@@ -50,28 +53,36 @@ fn main() {
     });
 
     let root = std::env::current_dir().unwrap();
-    let world = root.join(opts.world.unwrap_or_else(|| utils::enter_path("Please enter the world path: ", true)));
+    let world = root.join(opts.world.unwrap_or_else(|| {
+        if opts.noprompt {
+            log::error!("no world path provided");
+            std::process::exit(1);
+        }
+        utils::enter_path("Please enter the world path: ", true)
+    }));
     let config = root.join(opts.config.unwrap_or_else(|| world.join(config::DEFAULT_FILENAME)));
 
-    if let Some(config) = Config::load(&config) {
+    if let Some(config) = Config::load(&config, opts.noprompt) {
         let target = match (opts.dir, opts.zip) {
             (Some(path), _) => Target::Dir(root.join(path)),
             (_, Some(path)) => Target::Zip(root.join(path).with_extension("zip")),
+            _ if opts.noprompt => {
+                log::error!("no target path provided (please use either -z or -d)");
+                std::process::exit(1);
+            },
             _ => {
                 let path = utils::enter_path("Please enter the zip output path: ", false);
                 Target::Zip(root.join(path).with_extension("zip"))
-            } 
+            }
         };
 
         if match &target {
-            Target::Dir(path) if path.exists() => utils::confirm(
-                "The output directory already exists, do you want to continue?",
-                false,
-            ),
-            Target::Zip(path) if path.exists() => utils::confirm(
-                "The output zip file already exists, do you want to replace it?",
-                false,
-            ),
+            Target::Dir(path) if path.exists() && !opts.noprompt => {
+                utils::confirm("The output directory already exists, do you want to continue?", true)
+            } ,
+            Target::Zip(path) if path.exists() && !opts.noprompt => {
+                utils::confirm("The output zip file already exists, do you want to replace it?", true)
+            },
             _ => true,
         } {
             App::new(config, world).run(target)
