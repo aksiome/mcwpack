@@ -86,7 +86,7 @@ impl App {
 
         entries.par_iter().progress_with(PROGRESS.to_owned()).for_each(|(path, packager)| {
             packager.package(path, &self.config, &writer).unwrap_or_else(|err| {
-                log::warn!("{err}");
+                log::warn!("{err} [{}]", path.display());
             });
         });
 

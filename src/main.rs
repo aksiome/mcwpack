@@ -38,13 +38,21 @@ pub struct Opts {
     /// Silence warning
     #[arg(short, long, conflicts_with = "verbose")]
     quiet: bool,
+    /// Force colorization
+    #[arg(long)]
+    colors: bool,
     /// Ignore prompts
-    #[arg(short, long)]
+    #[arg(long)]
     noprompt: bool,
 }
 
 fn main() {
     let opts = Opts::parse();
+
+    if opts.colors {
+        console::set_colors_enabled(true);
+        console::set_colors_enabled_stderr(true);
+    }
 
     Logger::init(match opts {
         _ if opts.verbose => LevelFilter::Trace,
@@ -55,7 +63,7 @@ fn main() {
     let root = std::env::current_dir().unwrap();
     let world = root.join(opts.world.unwrap_or_else(|| {
         if opts.noprompt {
-            log::error!("no world path provided");
+            log::error!("a world path must be provided when noprompt is enabled");
             std::process::exit(1);
         }
         utils::enter_path("Please enter the world path: ", true)
@@ -67,7 +75,7 @@ fn main() {
             (Some(path), _) => Target::Dir(root.join(path)),
             (_, Some(path)) => Target::Zip(root.join(path).with_extension("zip")),
             _ if opts.noprompt => {
-                log::error!("no target path provided (please use either -z or -d)");
+                log::error!("a target path must be provided when noprompt is enabled (use either -z or -d)");
                 std::process::exit(1);
             },
             _ => {

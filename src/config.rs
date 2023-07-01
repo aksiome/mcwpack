@@ -103,8 +103,8 @@ impl Config {
     pub fn load(path: &Path, noprompt: bool) -> Option<Self> {
         std::env::set_current_dir(path.parent().unwrap()).expect("could not set working dir");
 
-        std::fs::read_to_string(path).map_or_else(|_| {
-            log::error!("could not read the config file!");
+        std::fs::read_to_string(path).map_or_else(|err| {
+            log::error!("an error occured while reading the config file ({err})");
             if noprompt {
                 std::process::exit(1);
             }
@@ -120,7 +120,9 @@ impl Config {
     }
 
     fn try_parse(contents: &str) -> Option<Self> {
-        serde_yaml::from_str(contents).map_err(|err| log::error!("{err}")).ok()
+        serde_yaml::from_str(contents).map_err(|err| {
+            log::error!("an error occured while parsing the config file ({err})")
+        }).ok()
     }
 
     fn create_or_edit(path: &Path, contents: &str) -> Option<Self> {
@@ -132,7 +134,7 @@ impl Config {
             Self::try_parse(&contents).map(|config| {
                 if utils::confirm("Do you want to save the config file?", true) {
                     std::fs::write(path, &contents).unwrap_or_else(|err| {
-                        log::error!("{err}");
+                        log::error!("an error occured while saving the config file ({err})");
                     });
                 }
                 config

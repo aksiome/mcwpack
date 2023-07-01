@@ -20,19 +20,19 @@ impl Packager for RegionPackager {
         writer: &Mutex<Box<dyn Writer>>,
     ) -> Result<()> {
         if entry.metadata()?.len() <= 8192 {
-            log::info!("skipped empty region: {}", entry.to_string_lossy());
+            log::info!("skipped empty region [{}]", entry.display());
             return Ok(());
         }
 
         match config.clean_chunks {
             true => {
                 let contents = Region::load(entry)
-                    .with_context(|| format!("could not read region: {}", entry.to_string_lossy()))?
+                    .with_context(|| "could not read region")?
                     .optimize_bytes(config)
-                    .with_context(|| format!("could not process region: {}", entry.to_string_lossy()))?;
+                    .with_context(|| "could not process region")?;
 
                 match contents.len() {
-                    ..=8192 => log::info!("skipped empty region: {}", entry.to_string_lossy()),
+                    ..=8192 => log::info!("skipped empty region [{}]", entry.display()),
                     _ => writer.lock().unwrap().write(entry, contents)?,
                 }
             },
