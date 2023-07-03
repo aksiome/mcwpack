@@ -45,7 +45,7 @@ accepted_entries:
 pub struct Config {
     pub name: Option<String>,
     pub dirname: Option<String>,
-    #[serde(deserialize_with = "deserialize_path")]
+    #[serde(default, deserialize_with = "deserialize_path")]
     pub resourcepack: Option<PathBuf>,
     #[serde(default)]
     pub reset_player: bool,
@@ -72,7 +72,7 @@ where
     D: Deserializer<'de>,
 {
     let path: Option<PathBuf> = Deserialize::deserialize(deserializer)?;
-    path.map(|path| path.canonicalize().map_err(serde::de::Error::custom)).transpose()
+    Ok(path.map(|path| path.canonicalize().unwrap_or(path)))
 }
 
 fn deserialize_override<'de, D>(deserializer: D) -> Result<Override, D::Error>
