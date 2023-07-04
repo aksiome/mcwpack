@@ -6,13 +6,18 @@
 This tool is used to automatically prepare a Minecraft World for release. This project was inspired by:
 - https://github.com/shurik204/map-prepare
 
+#### Also exists as a github action
+[![`minecraft-package`](https://img.shields.io/badge/aksiome/minecraft--package-6f42c1?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/aksiome/minecraft-package)
+
 ## Features
 - Filter files that you want to keep using glob patterns
 - Delete chunks that are considered empty (filled only with air / with no entities / with no poi)
 - Zip all datapacks and update the level.dat accordingly
 - Zip and add a resourcepack to the world if provided
+- Zip additional files (Readme, ...)
 - Filter scores and objectives
 - Set the level.dat world name
+
 
 ## How to use
 
