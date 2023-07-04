@@ -1,6 +1,7 @@
 use std::io::Cursor;
 use std::path::{PathBuf, Path};
 use std::str::FromStr;
+use std::time::Duration;
 
 use anyhow::Result;
 use ignore::WalkBuilder;
@@ -31,6 +32,25 @@ impl StringValidator for PathValidator {
             Validation::Valid
         })
     }
+}
+
+pub fn print_start(world: &Path) {
+    println!(
+        "  {} {} ({})",
+        console::style("Packaging").green().bold(),
+        world.file_name().unwrap().to_string_lossy(),
+        world.to_string_lossy(),
+    );
+}
+
+pub fn print_finish(target: &Path, duration: &Duration) {
+    println!(
+        "   {} {} ({}) in {:.2}s",
+        console::style("Finished").green().bold(),
+        target.file_name().unwrap().to_string_lossy(),
+        target.canonicalize().unwrap().to_string_lossy(),
+        duration.as_secs_f32(),
+    );
 }
 
 pub fn confirm(message: &str, default: bool) -> bool {
