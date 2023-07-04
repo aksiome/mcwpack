@@ -11,8 +11,13 @@ pub const DEFAULT_CONTENTS: &str = "#### MCWPACK CONFIG FILE ####
 
 # Level name (supports minecraft color codes)
 name: null
-# Directory name inside the archive
+# Directory name for the world inside the archive (only when using the zip option)
 dirname: null
+# Additional files to pack inside the archive (only when using the zip option)
+# extra_files:
+#   - Readme.md
+#   - source: ./../anywhere/server.properties
+#     target: server/server.properties
 # Resourcepack directory (or zip archive)
 resourcepack: null
 # Reset player data in level.dat
@@ -41,11 +46,16 @@ accepted_entries:
   - level.dat
 ";
 
-#[derive(Deserialize, Debug)]
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
+    #[serde(default)]
     pub name: Option<String>,
+    #[serde(default)]
     pub dirname: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_path")]
+    #[serde(default)]
+    pub extra_files: Vec<ExtraFile>,
+    #[serde(default, deserialize_with = "deserialize_optional_path")]
     pub resourcepack: Option<PathBuf>,
     #[serde(default)]
     pub reset_player: bool,
@@ -63,11 +73,31 @@ pub struct Config {
     pub accepted_entries: Override,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ExtraFile {
+    #[serde(deserialize_with = "deserialize_path")]
+    Short(PathBuf),
+    Full {
+        #[serde(deserialize_with = "deserialize_path")]
+        source: PathBuf,
+        target: PathBuf,
+    }
+}
+
 fn ignored_blocks() -> Vec<String> {
     vec!["minecraft:air".to_owned()]
 }
 
-fn deserialize_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
+fn deserialize_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let path: PathBuf = Deserialize::deserialize(deserializer)?;
+    Ok(path.canonicalize().unwrap_or(path))
+}
+
+fn deserialize_optional_path<'de, D>(deserializer: D) -> Result<Option<PathBuf>, D::Error>
 where
     D: Deserializer<'de>,
 {

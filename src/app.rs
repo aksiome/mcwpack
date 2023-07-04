@@ -8,6 +8,7 @@ use rayon::prelude::*;
 
 use crate::config::Config;
 use crate::packagers::*;
+use crate::utils;
 use crate::writers::Writer;
 use crate::writers::dir::DirWriter;
 use crate::writers::zip::ZipWriter;
@@ -20,14 +21,14 @@ lazy_static::lazy_static! {
     };
 }
 
-pub enum Target {
-    Dir(PathBuf),
-    Zip(PathBuf),
-}
-
 pub struct App {
     config: Config,
     world: PathBuf,
+}
+
+pub enum Target {
+    Dir(PathBuf),
+    Zip(PathBuf),
 }
 
 impl Target {
@@ -41,9 +42,10 @@ impl Target {
     pub fn writer(&self, app: &App) -> Box<dyn Writer> {
         match self {
             Self::Dir(path) => Box::new(DirWriter::new(path)),
-            Self::Zip(path) => Box::new(ZipWriter::create(
+            Self::Zip(path) => Box::new(ZipWriter::init(
                 path,
-                app.config.dirname.as_deref()
+                &app.config.extra_files,
+                app.config.dirname.as_deref(),
             )),
         }
     }
@@ -58,39 +60,27 @@ impl App {
         std::env::set_current_dir(&self.world).expect("could not set working dir");
 
         let time = Instant::now();
-        println!(
-            "  {} {} ({})",
-            console::style("Packaging").green().bold(),
-            self.world.file_name().unwrap().to_string_lossy(),
-            self.world.to_string_lossy(),
-        );
+        utils::print_start(&self.world);
 
         let mut entries = vec![];
         entries.append(&mut self.world_entries());
         entries.append(&mut self.extra_entries());
-        self.package(&entries, Mutex::new(target.writer(self)));
 
-        println!(
-            "   {} {} ({}) in {:.2}s",
-            console::style("Finished").green().bold(),
-            target.path().file_name().unwrap().to_string_lossy(),
-            target.path().canonicalize().unwrap().to_string_lossy(),
-            time.elapsed().as_secs_f32(),
-        );
-    }
-
-    fn package(&self, entries: &[(PathBuf, &dyn Packager)], writer: Mutex<Box<dyn Writer>>) {
         PROGRESS.reset();
         PROGRESS.set_length(entries.len() as u64);
         PROGRESS.set_draw_target(ProgressDrawTarget::stderr());
+        self.package(&entries, Mutex::new(target.writer(self)));
+        PROGRESS.finish_and_clear();
 
+        utils::print_finish(target.path(), &time.elapsed());
+    }
+
+    fn package(&self, entries: &[(PathBuf, &dyn Packager)], writer: Mutex<Box<dyn Writer>>) {
         entries.par_iter().progress_with(PROGRESS.to_owned()).for_each(|(path, packager)| {
             packager.package(path, &self.config, &writer).unwrap_or_else(|err| {
                 log::warn!("{err} [{}]", path.display());
             });
         });
-
-        PROGRESS.finish_and_clear();
     }
 
     fn extra_entries(&self) -> Vec<(PathBuf, &dyn Packager)> {
