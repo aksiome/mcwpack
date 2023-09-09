@@ -4,7 +4,9 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use anyhow::Result;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 pub type Compound = HashMap<String, fastnbt::Value>;
 

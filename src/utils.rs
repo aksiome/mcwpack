@@ -1,5 +1,4 @@
-use std::io::Cursor;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -8,21 +7,24 @@ use ignore::WalkBuilder;
 use inquire::validator::{StringValidator, Validation};
 use inquire::{Confirm, CustomUserError, Text};
 
-use crate::writers::Writer;
-use crate::writers::zip::ZipWriter;
+use crate::storage::{InMemoryStorage, Storage, ZipStorage};
 
-#[derive(Clone)]
-struct PathValidator {
-    exists: bool,
+pub trait PrefixPath {
+    fn prefix<P: AsRef<Path>>(&self, prefix: Option<P>) -> PathBuf;
 }
 
-impl PathValidator {
-    fn new(exists: bool) -> Self {
-        Self { exists }
+impl PrefixPath for PathBuf {
+    fn prefix<P: AsRef<Path>>(&self, prefix: Option<P>) -> PathBuf {
+        prefix.map_or_else(|| self.to_owned(), |p| p.as_ref().join(self))
     }
 }
 
-impl StringValidator for PathValidator {
+#[derive(Clone)]
+struct StringPathValidator {
+    exists: bool,
+}
+
+impl StringValidator for StringPathValidator {
     fn validate(&self, input: &str) -> Result<Validation, CustomUserError> {
         Ok(if input.is_empty() {
             Validation::Invalid("A non empty path is required".into())
@@ -34,54 +36,53 @@ impl StringValidator for PathValidator {
     }
 }
 
-pub fn print_start(world: &Path) {
+pub fn print_start(path: &Path) {
     println!(
         "  {} {} ({})",
         console::style("Packaging").green().bold(),
-        world.file_name().unwrap().to_string_lossy(),
-        world.to_string_lossy(),
+        path.file_name().unwrap().to_string_lossy(),
+        path.display(),
     );
 }
 
-pub fn print_finish(target: &Path, duration: &Duration) {
+pub fn print_finish(path: &Path, duration: &Duration) {
     println!(
         "   {} {} ({}) in {:.2}s",
         console::style("Finished").green().bold(),
-        target.file_name().unwrap().to_string_lossy(),
-        target.canonicalize().unwrap().to_string_lossy(),
+        path.file_name().unwrap().to_string_lossy(),
+        path.canonicalize().unwrap().display(),
         duration.as_secs_f32(),
     );
 }
 
 pub fn confirm(message: &str, default: bool) -> bool {
-    Confirm::new(message).with_default(default).prompt().unwrap_or(default)
+    Confirm::new(message)
+        .with_default(default)
+        .prompt()
+        .unwrap_or(default)
 }
 
 pub fn enter_path(message: &str, exists: bool) -> PathBuf {
-    Text::new(message).with_validator(PathValidator::new(exists)).prompt().map(
-        |value| PathBuf::from_str(&value).ok()
-    ).ok().flatten().unwrap_or_else(|| enter_path(message, exists))
-}
-
-pub fn copy_to_dir(entry: &Path, dir: &Path) -> Result<()> {
-    let path = dir.join(entry);
-    std::fs::create_dir_all(path.parent().unwrap())?;
-    std::fs::copy(entry, path)?;
-
-    Ok(())
+    Text::new(message)
+        .with_validator(StringPathValidator { exists })
+        .prompt()
+        .map(|value| PathBuf::from_str(&value).ok())
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| enter_path(message, exists))
 }
 
 pub fn create_zip_from_dir(dir: &Path) -> Result<Vec<u8>> {
-    let mut writer = ZipWriter::<Cursor<Vec<u8>>>::new(vec![]);
+    let mut storage = ZipStorage::new(&[]);
     for entry in WalkBuilder::new(dir).same_file_system(true).build() {
         let entry = entry?;
         if entry.path().is_file() {
-            writer.write(
+            storage.write(
                 entry.path().strip_prefix(dir)?,
-                std::fs::read(entry.path())?,
+                &std::fs::read(entry.path())?,
             )?;
         }
     }
 
-    Ok(writer.finish()?.into_inner())
+    Ok(storage.finish()?.into_inner())
 }

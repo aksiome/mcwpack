@@ -8,7 +8,7 @@ use fastanvil::Region as Chunks;
 use fastnbt::Value;
 use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
+use crate::Config;
 use super::nbt::Compound;
 
 pub struct Region {
@@ -54,7 +54,7 @@ impl Chunk {
         Ok(fastnbt::from_bytes(&data.data)?)
     }
 
-    pub fn is_chunk_empty(&self, ignored_blocks: &[String]) -> bool {
+    pub fn is_empty(&self, ignored_blocks: &[String]) -> bool {
         if self.other.get("Status").map_or(false, |v| v != "full" && v != "minecraft:full") {
             return true;
         }
@@ -91,7 +91,7 @@ impl Region {
         for data in self.chunks.iter() {
             let data = &data?;
             let chunk = &Chunk::new(data)?;
-            if !chunk.is_chunk_empty(&config.ignored_blocks) {
+            if !chunk.is_empty(&config.ignored_blocks) {
                 let ser = fastnbt::to_bytes(chunk)?;
                 chunks.write_chunk(data.x, data.z, &ser)?;
             }

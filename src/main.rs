@@ -1,18 +1,13 @@
+use std::io::Write;
 use std::path::PathBuf;
 
-use app::{App, Target};
 use clap::Parser;
-use config::Config;
-use log::LevelFilter;
-use logger::Logger;
+use log::{Level, LevelFilter};
+use mcwpack::utils::*;
+use mcwpack::Config;
+use mcwpack::Context;
 
-mod app;
-mod config;
-mod logger;
-mod utils;
-mod models;
-mod packagers;
-mod writers;
+const DEFAULT_CONFIG: &str = "mcwpack.yaml";
 
 #[derive(Parser)]
 #[clap(
@@ -54,46 +49,55 @@ fn main() {
         console::set_colors_enabled_stderr(true);
     }
 
-    Logger::init(match opts {
-        _ if opts.verbose => LevelFilter::Trace,
-        _ if opts.quiet => LevelFilter::Error,
+    let verbosity = match (opts.verbose, opts.quiet) {
+        (true, _) => LevelFilter::Trace,
+        (_, true) => LevelFilter::Error,
         _ => LevelFilter::Warn,
-    });
+    };
 
-    let root = std::env::current_dir().unwrap();
-    let world = root.join(opts.world.unwrap_or_else(|| {
+    env_logger::builder().format(|buf, record| {
+        writeln!(buf, "{} {}", match record.level() {
+            Level::Trace => console::style("(-)").black().bold(),
+            Level::Debug => console::style("(>)").magenta().bold(),
+            Level::Info => console::style("(i)").cyan().bold(),
+            Level::Warn => console::style("(!)").yellow().bold(),
+            Level::Error => console::style("(x)").red().bold(),
+        }, match record.level() {
+            Level::Warn => console::style(record.args()).yellow(),
+            Level::Error => console::style(record.args()).red(),
+            _ => console::style(record.args()),
+        })
+    }).filter_level(verbosity).init();
+
+    let world = opts.world.to_owned().map(|p| p.canonicalize().unwrap_or_else(|err| {
+        log::error!("the world path is not valid ({})", err);
+        std::process::exit(1);
+    })).unwrap_or_else(|| {
         if opts.noprompt {
             log::error!("a world path must be provided when noprompt is enabled");
             std::process::exit(1);
         }
-        utils::enter_path("Please enter the world path: ", true)
-    }));
-    let config = root.join(opts.config.unwrap_or_else(|| world.join(config::DEFAULT_FILENAME)));
+        enter_path("Please enter the world path: ", true).canonicalize().unwrap()
+    });
+
+    let config = opts.config.to_owned().unwrap_or_else(|| world.join(DEFAULT_CONFIG));
 
     if let Some(config) = Config::load(&config, opts.noprompt) {
-        let target = match (opts.dir, opts.zip) {
-            (Some(path), _) => Target::Dir(root.join(path)),
-            (_, Some(path)) => Target::Zip(root.join(path).with_extension("zip")),
+        let (context, target) = match (opts.dir, opts.zip) {
+            (Some(path), _) => (Context::Dir, path),
+            (_, Some(path)) => (Context::Zip, path.with_extension("zip")),
             _ if opts.noprompt => {
                 log::error!("a target path must be provided when noprompt is enabled (use either -z or -d)");
                 std::process::exit(1);
             },
-            _ => {
-                let path = utils::enter_path("Please enter the zip output path: ", false);
-                Target::Zip(root.join(path).with_extension("zip"))
-            }
+            _ => (Context::Zip, enter_path("Please enter the zip output path: ", false).with_extension("zip"))
         };
 
-        if match &target {
-            Target::Dir(path) if path.exists() && !opts.noprompt => {
-                utils::confirm("The output directory already exists, do you want to continue?", true)
-            } ,
-            Target::Zip(path) if path.exists() && !opts.noprompt => {
-                utils::confirm("The output zip file already exists, do you want to replace it?", true)
-            },
-            _ => true,
+        if !target.exists() || !opts.noprompt && match context {
+            Context::Dir => confirm("The output directory already exists, do you want to continue?", true),
+            Context::Zip => confirm("The output zip file already exists, do you want to replace it?", true),
         } {
-            App::new(config, world).run(target)
-        }
+            context.package(config, &world, &target);
+        };
     }
 }
