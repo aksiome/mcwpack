@@ -43,6 +43,10 @@ Options:
   -V, --version         Print version
 ```
 
+## Configuration
+
+More information on the default [config.yaml](config.yaml) file.
+
 ## Compiling from source
 
 You need to have **[cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)** installed on your system.
