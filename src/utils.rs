@@ -50,7 +50,7 @@ pub fn print_finish(path: &Path, duration: &Duration) {
         "   {} {} ({}) in {:.2}s",
         console::style("Finished").green().bold(),
         path.file_name().unwrap().to_string_lossy(),
-        path.canonicalize().unwrap().display(),
+        path.display(),
         duration.as_secs_f32(),
     );
 }

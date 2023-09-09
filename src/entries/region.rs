@@ -1,6 +1,5 @@
 use crate::formats::Region;
 use crate::utils::PrefixPath;
-use crate::PB_SPACING;
 use super::*;
 
 #[derive(Clone, Debug, Deref, From)]
@@ -12,7 +11,7 @@ impl<S: Storage> Visitor<RegionEntry> for Packager<S> {
     fn visit(&self, entry: &RegionEntry) -> Result<()> {
         if entry.metadata()?.len() <= 8192 {
             self.progress.suspend(|| {
-                log::info!("{}skipped empty region [{}]", PB_SPACING, entry.display())
+                log::info!("skipped empty region [{}]", entry.display())
             });
             return Ok(());
         }
@@ -27,7 +26,7 @@ impl<S: Storage> Visitor<RegionEntry> for Packager<S> {
 
             if contents.len() <= 8192 {
                 self.progress.suspend(|| {
-                    log::info!("{}skipped empty region [{}]", PB_SPACING, entry.display())
+                    log::info!("skipped empty region [{}]", entry.display())
                 });
                 return Ok(());
             }

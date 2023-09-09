@@ -14,10 +14,10 @@ use std::time::Instant;
 use entries::{Entry, Packageable};
 use ignore::{WalkBuilder, WalkState};
 use indicatif::{ProgressBar, ProgressStyle};
+use path_absolutize::Absolutize;
 use rayon::prelude::*;
 use storage::{DirStorage, FilesystemStorage, Storage, ZipStorage};
 
-const PB_SPACING: &str = "   ";
 const PB_TEMPLATE: &str = "{prefix:.cyan.bold} [{bar:35}] {pos}/{len} files";
 
 pub enum Context {
@@ -27,6 +27,7 @@ pub enum Context {
 
 impl Context {
     pub fn package(&self, config: Config, from: &Path, to: &Path) {
+        let to = &to.absolutize().unwrap();
         match self {
             Self::Dir => Packager::new(config, from.to_owned(), DirStorage::new(to)).run(),
             Self::Zip => Packager::new(config, from.to_owned(), ZipStorage::new(to)).run(),
@@ -43,7 +44,7 @@ pub struct Packager<S: Storage> {
 
 impl<S: Storage> Packager<S> {
     pub fn new(config: Config, world: PathBuf, target: S) -> Self {
-        let tmpl = format!("{}{}", PB_SPACING, PB_TEMPLATE);
+        let tmpl = format!("   {}", PB_TEMPLATE);
         let style = ProgressStyle::with_template(&tmpl).unwrap().progress_chars("=>-");
         let progress = ProgressBar::new(0).with_style(style).with_prefix("Progress");
 
@@ -67,10 +68,12 @@ impl<S: Storage> Packager<S> {
 
         entries.par_iter().for_each(|entry| {
             entry.package(self).unwrap_or_else(|err| self.progress.suspend(|| {
-                log::warn!("{}{err} [{}]", PB_SPACING, entry.path().display())
+                log::warn!("{err} [{}]", entry.path().display())
             }));
+            self.progress.inc(1);
         });
 
+        self.progress.finish_and_clear();
         utils::print_finish(self.target.path().unwrap_or(&self.world), &time.elapsed());
     }
 
@@ -85,6 +88,7 @@ impl<S: Storage> Packager<S> {
     pub fn world_entries(&self) -> Vec<Entry> {
         let entries = Mutex::new(vec![]);
         let walker = WalkBuilder::new("./")
+            .git_ignore(false)
             .overrides(self.config.accepted_entries.to_owned())
             .same_file_system(true)
             .build_parallel();

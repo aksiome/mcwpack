@@ -67,7 +67,7 @@ fn main() {
             Level::Error => console::style(record.args()).red(),
             _ => console::style(record.args()),
         })
-    }).filter_level(verbosity).init();
+    }).filter(Some("mcwpack"), verbosity).init();
 
     let world = opts.world.to_owned().map(|p| p.canonicalize().unwrap_or_else(|err| {
         log::error!("the world path is not valid ({})", err);
