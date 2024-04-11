@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
+use path_absolutize::Absolutize;
 use serde::{Deserialize, Deserializer};
 
 use crate::entries::ExtraEntry;
@@ -85,6 +86,15 @@ where
 
 impl Config {
     pub fn load(path: &Path, noprompt: bool) -> Option<Self> {
+        let conf_path = path.absolutize().unwrap();
+        let current_dir = std::env::current_dir().expect("could not get working dir");
+        std::env::set_current_dir(path.parent()?).expect("could not set working dir");
+        let config = Self::try_load(&conf_path, noprompt);
+        std::env::set_current_dir(current_dir).expect("could not set working dir");
+        config
+    }
+
+    fn try_load(path: &Path, noprompt: bool) -> Option<Self> {
         std::fs::read_to_string(path).map_or_else(|err| {
             log::error!("could not read the config file ({err})");
             Self::try_edit(path, include_str!("../config.yaml"), noprompt)

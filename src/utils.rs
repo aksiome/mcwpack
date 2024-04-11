@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -9,13 +9,37 @@ use inquire::{Confirm, CustomUserError, Text};
 
 use crate::storage::{InMemoryStorage, Storage, ZipStorage};
 
-pub trait PrefixPath {
+pub trait PathUtils {
     fn prefix<P: AsRef<Path>>(&self, prefix: Option<P>) -> PathBuf;
+    fn normalize(&self) -> PathBuf;
 }
 
-impl PrefixPath for PathBuf {
+impl PathUtils for PathBuf {
     fn prefix<P: AsRef<Path>>(&self, prefix: Option<P>) -> PathBuf {
-        prefix.map_or_else(|| self.to_owned(), |p| p.as_ref().join(self))
+        match prefix {
+            Some(p) => p.as_ref().join(self),
+            None => self.to_owned(),
+        }.normalize()
+    }
+
+    fn normalize(&self) -> PathBuf {
+        let mut components = self.components().peekable();
+        let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+            components.next();
+            PathBuf::from(c.as_os_str())
+        } else {
+            PathBuf::new()
+        };
+        for component in components {
+            match component {
+                Component::Prefix(..) => unreachable!(),
+                Component::RootDir => ret.push(component.as_os_str()),
+                Component::CurDir => {}
+                Component::ParentDir => {ret.pop();},
+                Component::Normal(c) => ret.push(c),
+            }
+        }
+        ret
     }
 }
 

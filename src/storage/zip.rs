@@ -26,6 +26,10 @@ impl InMemoryStorage for ZipStorage<Cursor<Vec<u8>>> {
 
 impl FilesystemStorage for ZipStorage<File> {
     fn new(path: &Path) -> Self {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+
         Self {
             path: Some(path.to_owned()),
             writer: Mutex::new(ZipWriter::new(File::create(path).unwrap())),

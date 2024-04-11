@@ -5,6 +5,7 @@ use serde::Deserialize;
 use super::*;
 
 #[derive(Clone, Debug, Deserialize, From)]
+#[serde(untagged)]
 pub enum ExtraEntry {
     Short(PathBuf),
     Full(PathBuf, PathBuf),

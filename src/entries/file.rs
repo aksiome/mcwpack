@@ -1,4 +1,4 @@
-use crate::utils::PrefixPath;
+use crate::utils::PathUtils;
 use super::*;
 
 #[derive(Clone, Debug, Deref, From)]
