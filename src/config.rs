@@ -88,7 +88,7 @@ impl Config {
     pub fn load(path: &Path, noprompt: bool) -> Option<Self> {
         let conf_path = path.absolutize().unwrap();
         let current_dir = std::env::current_dir().expect("could not get working dir");
-        std::env::set_current_dir(path.parent()?).expect("could not set working dir");
+        std::env::set_current_dir(conf_path.parent()?).expect("could not set working dir");
         let config = Self::try_load(&conf_path, noprompt);
         std::env::set_current_dir(current_dir).expect("could not set working dir");
         config
